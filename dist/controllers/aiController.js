@@ -1,0 +1,231 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.aiController = void 0;
+const prismaClient_1 = require("../prismaClient");
+const geminiService_1 = require("../services/ai/geminiService");
+const githubService_1 = __importDefault(require("../services/githubService"));
+const pdf_parse_1 = __importDefault(require("pdf-parse"));
+const config_1 = require("../config");
+// Instantiate services
+const geminiService = new geminiService_1.GeminiService();
+// Map the orgName from config to the expected organizationName for the service
+const githubConfig = {
+    ...config_1.config.github,
+    organizationName: config_1.config.github.orgName,
+};
+const githubService = new githubService_1.default(githubConfig);
+exports.aiController = {
+    /**
+     * Analyze a candidate's resume for a specific job description.
+     * The resume is expected to be uploaded and available in the request.
+     */
+    async analyzeResumeForJd(req, res) {
+        const { jdId } = req.params;
+        const file = req.file;
+        if (!file) {
+            return res.status(400).json({ error: 'Resume file is required.' });
+        }
+        if (!jdId) {
+            return res.status(400).json({ error: 'Job Description ID is required.' });
+        }
+        try {
+            const jobDescription = await prismaClient_1.prisma.jobDescription.findUnique({
+                where: { id: jdId },
+            });
+            if (!jobDescription) {
+                return res.status(404).json({ error: 'Job Description not found.' });
+            }
+            // Parse the resume PDF
+            const pdfData = await (0, pdf_parse_1.default)(file.buffer);
+            const resumeText = pdfData.text;
+            // Call Gemini to analyze the resume against the JD
+            const analysis = await geminiService.analyzeResumeForJd(resumeText, jobDescription);
+            // Create a resume record first
+            const resume = await prismaClient_1.prisma.resume.create({
+                data: {
+                    email: analysis.candidateEmail || 'unknown@email.com',
+                    filename: file.originalname,
+                    path: file.path || 'temporary-path',
+                    size: file.size,
+                    analysis: analysis, // Store the full analysis
+                },
+            });
+            // Create a candidate record
+            const candidate = await prismaClient_1.prisma.candidate.create({
+                data: {
+                    status: 'PendingReview',
+                    suitabilityScore: analysis.suitabilityScore,
+                    suitabilityAnalysis: analysis.analysis,
+                    jobDescriptionId: jdId,
+                    resumeId: resume.id,
+                },
+                include: {
+                    resume: true,
+                    jobDescription: true,
+                },
+            });
+            res.status(201).json({
+                message: 'Resume analyzed successfully',
+                candidate,
+                analysis,
+            });
+        }
+        catch (error) {
+            console.error('Error analyzing resume:', error);
+            res.status(500).json({ error: 'Failed to analyze resume.' });
+        }
+    },
+    /**
+     * Generate a coding project for a specific job description.
+     */
+    async generateProjectForJd(req, res) {
+        var _a, _b, _c, _d, _e, _f;
+        const { jdId } = req.params;
+        const user = req.user;
+        console.log(`[${new Date().toISOString()}] Starting project generation for JD: ${jdId}, User: ${user === null || user === void 0 ? void 0 : user.id}`);
+        if (!user) {
+            console.error('Unauthorized access attempt to generate project');
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+        try {
+            // 1. Fetch the Job Description from the database
+            console.log(`Fetching JD from database: ${jdId}`);
+            const jobDescription = await prismaClient_1.prisma.jobDescription.findUnique({
+                where: { id: jdId },
+                include: { test: true } // Include existing test to check if already generated
+            });
+            if (!jobDescription) {
+                console.error(`Job Description not found: ${jdId}`);
+                return res.status(404).json({ error: 'Job Description not found.' });
+            }
+            // Check if test already exists
+            if (jobDescription.test) {
+                console.log(`Test already exists for JD: ${jdId}, proceeding with regeneration...`);
+                // Delete the existing test and all related data to allow regeneration
+                console.log('Deleting existing test for regeneration...');
+                // First delete all related test cases to avoid foreign key constraint violations
+                await prismaClient_1.prisma.testCase.deleteMany({
+                    where: { testId: jobDescription.test.id },
+                });
+                console.log('Deleted related test cases');
+                // Now delete the test
+                await prismaClient_1.prisma.test.delete({
+                    where: { id: jobDescription.test.id },
+                });
+                console.log('Existing test deleted, proceeding with new generation...');
+            }
+            console.log(`Creating preliminary test record for JD: ${jobDescription.title}`);
+            // 2. Create a preliminary Test record to get a testId
+            const preliminaryTest = await prismaClient_1.prisma.test.create({
+                data: {
+                    title: `Generating test for ${jobDescription.title}...`,
+                    jobDescriptionId: jdId,
+                    difficulty: 'Pending',
+                    language: 'Pending',
+                    requirements: {},
+                },
+            });
+            console.log(`Preliminary test created with ID: ${preliminaryTest.id}`);
+            // 3. Generate the project from the JD using the Gemini service
+            console.log('Starting Gemini project generation...');
+            const projectTemplate = await geminiService.generateProjectFromJd({
+                title: jobDescription.title,
+                description: jobDescription.description,
+                minExperience: jobDescription.minExperience,
+                maxExperience: jobDescription.maxExperience,
+                languages: jobDescription.languages,
+                projectContext: jobDescription.projectContext,
+            });
+            console.log(`Project template generated: ${projectTemplate.title}`);
+            // 4. Create a GitHub repository and commit the generated project files
+            console.log('Creating GitHub repository...');
+            const { repoUrl, cloneUrl } = await githubService.createTemporaryRepo(preliminaryTest.id, user.id, projectTemplate.projectFiles // Use files directly from the template
+            );
+            console.log(`GitHub repository created: ${repoUrl}`);
+            // 5. Persist the Test and its TestCases in two steps to avoid nested-create issues
+            console.log('Updating test record with final details...');
+            const updatedTest = await prismaClient_1.prisma.test.update({
+                where: { id: preliminaryTest.id },
+                data: {
+                    gitRepoUrl: cloneUrl,
+                    title: projectTemplate.title,
+                    description: projectTemplate.description,
+                    difficulty: projectTemplate.difficulty,
+                    language: projectTemplate.languages ? projectTemplate.languages.join(', ') : 'unknown',
+                    requirements: projectTemplate.requirements,
+                },
+            });
+            // Insert test cases separately
+            console.log(`Creating ${projectTemplate.testCases.length} test cases...`);
+            if (projectTemplate.testCases.length > 0) {
+                await prismaClient_1.prisma.testCase.createMany({
+                    data: projectTemplate.testCases.map(tc => {
+                        var _a;
+                        return ({
+                            description: tc.description,
+                            input: (_a = tc.input) !== null && _a !== void 0 ? _a : null,
+                            expectedOutput: tc.expectedOutput,
+                            category: tc.category,
+                            difficulty: tc.difficulty,
+                            points: tc.points,
+                            verificationMethod: tc.verificationMethod,
+                            testId: updatedTest.id,
+                        });
+                    }),
+                });
+            }
+            const finalTest = await prismaClient_1.prisma.test.findUnique({
+                where: { id: updatedTest.id },
+                include: { testCases: true },
+            });
+            console.log(`[${new Date().toISOString()}] Project generation completed successfully for JD: ${jdId}`);
+            res.status(201).json({
+                message: 'Project created successfully!',
+                test: finalTest,
+                githubRepository: repoUrl,
+            });
+        }
+        catch (error) {
+            console.error(`[${new Date().toISOString()}] Error generating project for JD ${jdId}:`, {
+                message: error === null || error === void 0 ? void 0 : error.message,
+                stack: error === null || error === void 0 ? void 0 : error.stack,
+                name: error === null || error === void 0 ? void 0 : error.name,
+                response: (_a = error === null || error === void 0 ? void 0 : error.response) === null || _a === void 0 ? void 0 : _a.data,
+            });
+            // Clean up preliminary test if it was created
+            try {
+                if (jdId) {
+                    const existingTest = await prismaClient_1.prisma.test.findFirst({
+                        where: {
+                            jobDescriptionId: jdId,
+                            title: { contains: 'Generating test for' }
+                        }
+                    });
+                    if (existingTest) {
+                        await prismaClient_1.prisma.test.delete({ where: { id: existingTest.id } });
+                        console.log('Cleaned up preliminary test record');
+                    }
+                }
+            }
+            catch (cleanupError) {
+                console.error('Error cleaning up preliminary test:', cleanupError);
+            }
+            // Provide more specific error messages
+            if ((_b = error === null || error === void 0 ? void 0 : error.message) === null || _b === void 0 ? void 0 : _b.includes('GitHub')) {
+                return res.status(500).json({ error: 'Failed to create GitHub repository. Please check GitHub configuration.' });
+            }
+            else if (((_c = error === null || error === void 0 ? void 0 : error.message) === null || _c === void 0 ? void 0 : _c.includes('Gemini')) || ((_d = error === null || error === void 0 ? void 0 : error.message) === null || _d === void 0 ? void 0 : _d.includes('AI'))) {
+                return res.status(500).json({ error: 'Failed to generate project with AI. Please try again.' });
+            }
+            else if (((_e = error === null || error === void 0 ? void 0 : error.message) === null || _e === void 0 ? void 0 : _e.includes('Database')) || ((_f = error === null || error === void 0 ? void 0 : error.message) === null || _f === void 0 ? void 0 : _f.includes('Prisma'))) {
+                return res.status(500).json({ error: 'Database error occurred. Please try again.' });
+            }
+            else {
+                return res.status(500).json({ error: 'Failed to generate project. Please try again.' });
+            }
+        }
+    },
+};

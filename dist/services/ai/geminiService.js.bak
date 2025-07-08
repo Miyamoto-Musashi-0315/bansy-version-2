@@ -1,0 +1,306 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.GeminiService = void 0;
+const generative_ai_1 = require("@google/generative-ai");
+const config_1 = require("../../config");
+// Initialize the Gemini API client
+console.log('Initializing Gemini API with key:', config_1.config.geminiApiKey ? '***' + config_1.config.geminiApiKey.slice(-4) : 'MISSING API KEY!');
+if (!config_1.config.geminiApiKey) {
+    throw new Error("Missing Gemini API Key in configuration.");
+}
+const genAI = new generative_ai_1.GoogleGenerativeAI(config_1.config.geminiApiKey);
+// Use a recent, capable model
+// Use a compatible model for the API version
+const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-latest' });
+// --- Gemini Service Class ---
+class GeminiService {
+    /**
+     * Helper function to safely parse JSON from AI response
+     */
+    safeParseJson(jsonText, context) {
+        try {
+            // First attempt: direct parsing
+            return JSON.parse(jsonText);
+        }
+        catch (parseError) {
+            console.error(`Failed to parse ${context} JSON directly:`, parseError);
+            try {
+                // Try to extract JSON from text (in case the AI included non-JSON text)
+                const jsonMatch = jsonText.match(/\{[\s\S]*\}/m); // Match anything that looks like JSON object
+                if (jsonMatch && jsonMatch[0]) {
+                    return JSON.parse(jsonMatch[0]);
+                }
+                throw new Error('No valid JSON object found in response');
+            }
+            catch (extractError) {
+                console.error(`Failed to extract and parse ${context} JSON:`, extractError);
+                console.error('Raw text that failed to parse:', jsonText);
+                throw new Error(`Failed to parse ${context} response: ${extractError instanceof Error ? extractError.message : String(extractError)}`);
+            }
+        }
+    }
+    /**
+     * Analyzes a resume to extract relevant skills and experience
+     * @param resumeText The text content of the resume
+     * @returns Analysis of the resume including skills and recommended test level
+     */
+    async analyzeResume(resumeText) {
+        console.log(`GeminiService: Starting resume analysis. Resume text length: ${resumeText.length}`);
+        if (resumeText.length < 50) {
+            console.warn(`GeminiService: Resume text is very short. First 100 chars: "${resumeText.substring(0, 100)}"`);
+        }
+        const prompt = `Analyze this resume text for a Software Engineer role and return ONLY a valid JSON object.
+Do NOT include any explanatory text before or after the JSON object.
+The JSON object must strictly follow this structure:
+{
+  "skills": [ {"name": "string", "level": "beginner|intermediate|advanced", "yearsOfExperience": number} ],
+  "primaryLanguages": ["string", ...],
+  "yearsOfExperience": "string (e.g., '5 years', 'Less than 1 year')",
+  "keyProjects": ["string", ...],
+  "githubUsername": "string | null",
+  "overallExperience": "junior|mid|senior",
+  "recommendedDifficulty": "easy|medium|hard"
+}
+
+Resume text:
+---
+${resumeText}
+---`;
+        try {
+            const result = await model.generateContent(prompt);
+            const response = await result.response;
+            const analysisText = response.text();
+            console.log('GeminiService: Raw analysis response received');
+            // Parse the JSON response
+            const analysis = this.safeParseJson(analysisText, 'resume analysis');
+            console.log('GeminiService: Parsed resume analysis:', JSON.stringify(analysis, null, 2));
+            // Find relevant GitHub repository (optional)
+            let suggestedRepo;
+            try {
+                suggestedRepo = await this.findRelevantRepository(analysis.skills.map((s) => s.name).concat(analysis.primaryLanguages), analysis.keyProjects);
+            }
+            catch (repoError) {
+                console.warn('Could not find relevant repository, using fallback:', repoError);
+                suggestedRepo = 'https://github.com/gothinkster/realworld'; // Fallback
+            }
+            return { ...analysis, suggestedRepo };
+        }
+        catch (error) {
+            console.error('GeminiService: Error during resume analysis:', error);
+            throw new Error(`Resume analysis failed: ${error instanceof Error ? error.message : String(error)}`);
+        }
+    }
+    /**
+     * Attempts to find a relevant GitHub repository based on skills/projects.
+     */
+    async findRelevantRepository(skills, projects) {
+        console.log('Attempting to find relevant repository...');
+        const prompt = `Based on these technical skills and project descriptions, suggest ONE highly relevant, well-maintained open-source GitHub repository URL suitable for a learning/coding challenge.
+Consider the primary languages implied by the skills. Return ONLY the single repository URL as a string, nothing else.
+
+Skills: ${skills.join(', ')}
+Projects: ${projects.join(', ')}
+`;
+        try {
+            const result = await model.generateContent(prompt);
+            const response = await result.response;
+            const repoUrl = response.text().trim();
+            // Basic URL validation
+            if (repoUrl.startsWith('http://') || repoUrl.startsWith('https://')) {
+                console.log('Suggested repository found:', repoUrl);
+                return repoUrl;
+            }
+            else {
+                console.warn(`Gemini returned non-URL for repository suggestion: "${repoUrl}". Using fallback.`);
+                throw new Error('Invalid URL format from AI');
+            }
+        }
+        catch (error) {
+            console.error('Error finding repository via Gemini:', error);
+            return 'https://github.com/gothinkster/realworld'; // Fallback
+        }
+    }
+    /**
+     * Generates a coding project based on candidate's skills and experience.
+     * @param resumeAnalysis The resume analysis results
+     * @returns A project template with requirements and test cases
+     */
+    async generateProject(resumeAnalysis) {
+        var _a, _b, _c, _d;
+        console.log('GeminiService.generateProject: Starting project generation with analysis:', JSON.stringify(resumeAnalysis, null, 2));
+        // Ensure there's at least one primary language identified
+        if (!resumeAnalysis.primaryLanguages || resumeAnalysis.primaryLanguages.length === 0) {
+            console.error("No primary languages identified in the resume analysis. Cannot generate project.");
+            throw new Error("Cannot generate project: No primary languages identified.");
+        }
+        // Get the target language from the resumeAnalysis
+        const targetLanguage = resumeAnalysis.primaryLanguages[0];
+        console.log('GeminiService.generateProject: Generating prompt with primary languages:', resumeAnalysis.primaryLanguages);
+        // Generate a prompt for the project based on the resume analysis
+        const prompt = `Generate a coding project challenge based on the following candidate profile.
+The project should be a specific, isolated task potentially part of a larger system, but the candidate should focus only on the provided code and task.
+
+Candidate Profile:
+- Primary Language Focus: ${targetLanguage}
+- Skills: ${resumeAnalysis.skills.map(s => `${s.name} (${s.level}, ${s.yearsOfExperience} yrs)`).join(', ')}
+- Experience Level: ${resumeAnalysis.overallExperience} (${resumeAnalysis.yearsOfExperience})
+- Key Past Projects: ${resumeAnalysis.keyProjects.join(', ')}
+
+Project Requirements:
+1.  Target Language: Strictly use ${targetLanguage}.
+2.  Difficulty: ${resumeAnalysis.recommendedDifficulty}.
+3.  Task: Define a clear goal or feature to implement/debug within the provided code.
+4.  Bugs: Include 1-3 subtle, non-trivial bugs appropriate for the candidate's level, related to the task.
+5.  File Structure: Create a realistic but minimal file structure (multiple files in appropriate directories if standard for ${targetLanguage} projects).
+6.  Code Files: Provide the actual source code for all necessary files, including the intentional bugs. Do NOT use placeholders like "// Code here".
+7.  Dependency File: Include the correct dependency management file (e.g., package.json, requirements.txt, pom.xml, go.mod) with necessary dependencies for testing/running.
+8.  README.md: Include a README file explaining:
+    -   The project's goal/task.
+    -   How to set up the environment and install dependencies (specific commands for ${targetLanguage}).
+    -   How to run the code or tests.
+    -   Explicitly state the task(s) the candidate needs to complete (e.g., "Fix the bug in function X", "Implement feature Y"). Do NOT reveal the bug locations directly in the README.
+9.  Test Cases: Provide 5-7 specific test cases (input/output pairs or descriptions) directly related to verifying the task completion and bug fixes.
+
+Return ONLY a valid JSON object. Do NOT include any explanatory text before or after the JSON object.
+The JSON object must strictly follow this structure:
+{
+  "title": "string - Concise Project Title",
+  "description": "string - Brief description of the project task/goal",
+  "difficulty": "${resumeAnalysis.recommendedDifficulty}",
+  "language": "${targetLanguage}",
+  "requirements": ["string - List key libraries/tools needed, e.g., 'Node.js v18+', 'Python 3.9+', 'Maven 3.6+'"],
+  "projectFiles": {
+    "string (filepath, e.g., 'src/main.py' or 'README.md')": "string (file content - IMPORTANT: all special characters like double quotes, newlines, etc., within the file content string MUST be properly escaped to ensure the overall response is valid JSON.)"
+  },
+  "testCases": [
+    { "input": "string | null (Example: function arguments, API request body)",
+      "expectedOutput": "string (Example: return value, expected console log, API response snippet)",
+      "description": "string - What this test case verifies"
+    }
+  ]
+}`;
+        try {
+            // Implement retry logic with exponential backoff
+            const maxRetries = 3;
+            let attempt = 0;
+            let projectText = '';
+            while (attempt < maxRetries) {
+                try {
+                    attempt++;
+                    console.log(`GeminiService.generateProject: Attempt ${attempt}/${maxRetries} - Sending prompt to Gemini API...`);
+                    // Generate content with prompt
+                    const result = await model.generateContent(prompt);
+                    const response = await result.response;
+                    projectText = response.text();
+                    console.log(`GeminiService.generateProject: Attempt ${attempt}/${maxRetries} - Successfully received response`);
+                    // If we get here, the request was successful, so break out of the retry loop
+                    break;
+                }
+                catch (retryError) {
+                    console.error(`GeminiService.generateProject: Attempt ${attempt}/${maxRetries} failed:`, (retryError === null || retryError === void 0 ? void 0 : retryError.message) || 'Unknown error');
+                    // Check if it's a 503 Service Unavailable error (model overload)
+                    const is503Error = (retryError === null || retryError === void 0 ? void 0 : retryError.status) === 503 ||
+                        ((_a = retryError === null || retryError === void 0 ? void 0 : retryError.message) === null || _a === void 0 ? void 0 : _a.includes('503')) ||
+                        ((_b = retryError === null || retryError === void 0 ? void 0 : retryError.message) === null || _b === void 0 ? void 0 : _b.includes('overloaded')) ||
+                        ((_c = retryError === null || retryError === void 0 ? void 0 : retryError.message) === null || _c === void 0 ? void 0 : _c.includes('unavailable'));
+                    if (is503Error && attempt < maxRetries) {
+                        // Calculate delay with exponential backoff
+                        const delayMs = Math.pow(2, attempt) * 1000; // 2s, 4s, 8s
+                        console.log(`GeminiService.generateProject: 503 error detected. Retrying in ${delayMs / 1000}s...`);
+                        await new Promise(resolve => setTimeout(resolve, delayMs));
+                    }
+                    else if (attempt >= maxRetries) {
+                        // We've exhausted all retries
+                        console.error(`GeminiService.generateProject: All ${maxRetries} attempts failed. Giving up.`);
+                        throw retryError; // Re-throw to be caught by outer catch
+                    }
+                    else {
+                        // It's not a 503 error, so don't retry
+                        throw retryError; // Re-throw to be caught by outer catch
+                    }
+                }
+            }
+            // If we've gotten here, we have a successful response
+            console.log('GeminiService.generateProject: Raw project response from Gemini received.');
+            // Use safeParseJson for robust parsing
+            console.log('Raw project response length:', projectText.length);
+            const project = this.safeParseJson(projectText, 'project generation');
+            console.log('Parsed project:', JSON.stringify(project, null, 2));
+            // Convert projectFiles from object to array format
+            const projectFilesArray = Object.entries(project.projectFiles).map(([path, content]) => ({
+                path,
+                content: content
+            }));
+            // Create properly formatted ProjectTemplate
+            const formattedProject = {
+                title: project.title,
+                description: project.description,
+                difficulty: project.difficulty,
+                language: project.language,
+                requirements: project.requirements,
+                testCases: project.testCases,
+                projectFiles: projectFilesArray
+            };
+            // Basic validation
+            if (!formattedProject.projectFiles || formattedProject.projectFiles.length === 0) {
+                throw new Error("Generated project is missing 'projectFiles'.");
+            }
+            if (!formattedProject.testCases || formattedProject.testCases.length === 0) {
+                throw new Error("Generated project is missing 'testCases'.");
+            }
+            if (formattedProject.language.toLowerCase() !== targetLanguage.toLowerCase()) {
+                console.warn(`Generated project language (${formattedProject.language}) does not match requested language (${targetLanguage}). Proceeding cautiously.`);
+            }
+            return formattedProject;
+        }
+        catch (error) {
+            console.error('GeminiService.generateProject: Error generating project:', error);
+            console.error('GeminiService.generateProject: Error details:', {
+                name: error === null || error === void 0 ? void 0 : error.name,
+                message: error === null || error === void 0 ? void 0 : error.message,
+                status: error === null || error === void 0 ? void 0 : error.status,
+                response: (_d = error === null || error === void 0 ? void 0 : error.response) === null || _d === void 0 ? void 0 : _d.data,
+                stack: error === null || error === void 0 ? void 0 : error.stack
+            });
+            // If we get here, either it wasn't a 503 error or all retries failed
+            throw new Error(`Failed to generate project: ${(error === null || error === void 0 ? void 0 : error.message) || 'Unknown error'}`);
+        }
+    }
+    /**
+     * Generates additional test cases for a given project template.
+     */
+    async generateTestCases(project, count = 5) {
+        console.log(`Generating ${count} additional test cases for project: ${project.title}`);
+        const prompt = `Generate ${count} additional distinct test cases for the following coding project, focusing on edge cases or variations not already covered.
+Project Title: ${project.title}
+Description: ${project.description}
+Language: ${project.language}
+Existing Test Case Descriptions: ${project.testCases.map(tc => tc.description).join('; ')}
+
+Return ONLY a valid JSON array of test case objects. Do NOT include any explanatory text before or after the JSON array.
+The JSON array must strictly follow this structure:
+[
+  {
+    "input": "string | null",
+    "expectedOutput": "string",
+    "description": "string"
+  }
+]`;
+        try {
+            const result = await model.generateContent(prompt);
+            const response = await result.response;
+            const testCasesText = response.text();
+            console.log('Raw additional test cases response from Gemini received.');
+            // Use safeParseJson for robust parsing
+            console.log('Raw test cases response:', testCasesText);
+            const testCases = this.safeParseJson(testCasesText, 'test cases generation');
+            console.log('Parsed test cases:', JSON.stringify(testCases, null, 2));
+            return testCases;
+        }
+        catch (error) {
+            console.error('Error generating additional test cases:', error);
+            throw new Error(`Failed to generate additional test cases: ${error instanceof Error ? error.message : String(error)}`);
+        }
+    }
+}
+exports.GeminiService = GeminiService;

@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: code-execution-service
+    env: docker
+    plan: free
+    region: singapore # Closest to India for better latency
+    healthCheckPath: /health
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: VERSION
+        value: 1.0.0
+      - key: PYTHONUNBUFFERED
+        value: 1
+    scaling:
+      minInstances: 1
+      maxInstances: 1

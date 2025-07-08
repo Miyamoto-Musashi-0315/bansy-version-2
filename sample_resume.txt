@@ -1,0 +1,29 @@
+John Doe
+Software Engineer
+Email: test@example.com
+
+SUMMARY
+Experienced software engineer with 5 years of expertise in full-stack development.
+
+SKILLS
+- Programming Languages: JavaScript, Python, Java
+- Web Technologies: React, Node.js, Express
+- Databases: PostgreSQL, MongoDB
+- Tools: Git, Docker, AWS
+
+EXPERIENCE
+Senior Software Engineer | Tech Corp
+2020 - Present
+- Developed and maintained microservices using Node.js and Express
+- Built responsive web applications using React and TypeScript
+- Implemented CI/CD pipelines using GitHub Actions
+
+Software Engineer | StartupX
+2018 - 2020
+- Created RESTful APIs using Python and Django
+- Optimized database queries improving performance by 40%
+- Led a team of 3 junior developers
+
+EDUCATION
+Bachelor of Science in Computer Science
+University of Technology, 2018

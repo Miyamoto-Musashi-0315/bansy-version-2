@@ -1,0 +1,137 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+enum UserRole {
+  HR
+  CANDIDATE
+}
+
+model User {
+  id               String           @id @default(uuid())
+  email            String           @unique
+  name             String
+  password         String
+  role             UserRole         @default(HR)
+  company          Company?         @relation(fields: [companyId], references: [id])
+  companyId        String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  jobDescriptions  JobDescription[] // An HR user can create multiple JDs
+  submissions      Submission[]
+}
+
+model Company {
+  id    String @id @default(cuid())
+  name  String @unique
+  users User[]
+}
+
+// A Job Description for a specific role.
+model JobDescription {
+  id               String      @id @default(cuid())
+  title            String // e.g., "Senior Frontend Developer"
+  description      String // e.g., "A frontend developer proficient in React..."
+  minExperience    Int
+  maxExperience    Int
+  languages        String[] // e.g., ["python", "react", "typescript"]
+  projectContext   String // e.g., "The candidate will build a real-time chat application..."
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  creator          User        @relation(fields: [creatorId], references: [id])
+  creatorId        String
+  test             Test? // The single standardized test generated for this JD
+  candidates       Candidate[] // Candidates who have applied for this job
+}
+
+// Represents a candidate's application for a specific job.
+model Candidate {
+  id                  String         @id @default(cuid())
+  status              String         // e.g., "PendingReview", "TestSent", "Completed"
+  suitabilityScore    Float?         // The AI's score for the resume against the JD
+  suitabilityAnalysis Json?          // The AI's rationale for the score
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  jobDescription      JobDescription @relation(fields: [jobDescriptionId], references: [id])
+  jobDescriptionId    String
+  resume              Resume         @relation(fields: [resumeId], references: [id])
+  resumeId            String
+
+  @@unique([jobDescriptionId, resumeId]) // A person can only apply to a job once with the same resume
+}
+
+// A candidate's resume, can be linked to multiple applications (Candidates).
+model Resume {
+  id         String      @id @default(uuid())
+  email      String
+  filename   String
+  path       String
+  size       Int
+  analysis   Json? // To store AI analysis results
+  uploadedAt DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  candidates Candidate[] // Applications this resume has been used for
+}
+
+// A standardized test generated from a Job Description.
+model Test {
+  id               String       @id @default(cuid())
+  title            String
+  description      String?
+  difficulty       String
+  gitRepoUrl       String?
+  language         String
+  requirements     Json
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  jobDescription   JobDescription @relation(fields: [jobDescriptionId], references: [id])
+  jobDescriptionId String       @unique // Each JD has only one Test
+  testCases        TestCase[]
+  files            TestFile[]
+  submissions      Submission[]
+}
+
+model TestCase {
+  id                 String   @id @default(cuid())
+  description        String
+  input              String?
+  expectedOutput     String
+  category           String?
+  difficulty         String?
+  points             Int?
+  verificationMethod String?
+  test               Test     @relation(fields: [testId], references: [id])
+  testId             String
+}
+
+model TestFile {
+  id      String @id @default(cuid())
+  path    String
+  content String
+  test    Test   @relation(fields: [testId], references: [id])
+  testId  String
+}
+
+model Submission {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  status    String   // pending, completed, failed
+  result    Json?    // Test results and feedback
+  testId    String
+  test      Test     @relation(fields: [testId], references: [id])
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+}

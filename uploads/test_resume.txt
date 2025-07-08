@@ -1,0 +1,32 @@
+John Doe
+Software Engineer
+
+SUMMARY
+Experienced software engineer with 5 years of experience in full-stack development.
+
+SKILLS
+- Programming Languages: Python (5 years), JavaScript/TypeScript (4 years), Java (3 years)
+- Frameworks: React, Node.js, Django, Spring Boot
+- Tools: Git, Docker, AWS, MongoDB
+
+EXPERIENCE
+Senior Software Engineer | TechCorp Inc. | 2021-Present
+- Led development of microservices architecture using Node.js and TypeScript
+- Implemented CI/CD pipelines reducing deployment time by 50%
+- Mentored junior developers and conducted code reviews
+
+Software Engineer | StartupX | 2019-2021
+- Built RESTful APIs using Python and Django
+- Developed frontend features using React and TypeScript
+- Implemented automated testing improving code coverage by 40%
+
+EDUCATION
+B.S. Computer Science | Tech University | 2019
+
+GITHUB
+github.com/johndoe123
+
+PROJECTS
+- E-commerce Platform: Built using MERN stack with 10k+ daily users
+- Task Management System: Python/Django backend with React frontend
+- Real-time Chat Application: Node.js/Socket.io with MongoDB

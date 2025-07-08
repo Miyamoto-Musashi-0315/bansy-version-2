@@ -1,0 +1,38 @@
+Okay, focusing on the incremental approach and leveraging the planned Flask execution service architecture (subprocess execution + runtime installation), here's a revised list of what you can realistically target, ordered by increasing implementation effort/complexity:
+
+Phase 1: Core Language Support (Planned/Likely Already Working)
+Python: (Already supported) - Requires python3 installed.
+JavaScript: (Planned) - Requires node installed.
+Java: (Planned) - Requires JDK installed (javac + java).
+
+
+Phase 2: Simple Language Extensions (Same Mechanism, New Runtimes)
+Requires installing the runtime on the Render server and adding logic to the Flask service.
+PHP: Requires php installed. Run command: php <filename>.
+Ruby: Requires ruby installed. Run command: ruby <filename>.
+Go: Requires go installed. Run command: go run <filename>.
+C++: Requires g++ (from build-essential). Command: g++ <filename> -o executable && ./executable. (Slightly more complex: compile step + run step).
+C: Requires gcc (from build-essential). Command: gcc <filename> -o executable && ./executable. (Same complexity as C++).
+C#: Requires .NET SDK installed (specific installation process). Command: dotnet run (if project structure) or similar.
+TypeScript: Requires node and ts-node (npm install -g ts-node typescript). Command: ts-node <filename>. (Relies on Node.js ecosystem).
+
+Phase 3: Adding Basic Testing & Dependency Management
+Builds upon Phase 1 & 2, adds complexity of running package managers and test runners.
+JavaScript/TypeScript Unit Testing: Run npm install then npm test (using Jest, Vitest, etc.). Requires Node.js, npm, and handling package.json. Tests component/function logic without a real browser (using JSDOM usually).
+Python Unit Testing: Run pip install -r requirements.txt (if needed) then pytest or python -m unittest. Requires Python, pip, handling requirements.txt (or similar), and installing the test runner.
+Java Unit Testing (with Build Tools): Run mvn test or gradle test. Requires JDK, Maven/Gradle installed, and handling pom.xml/build.gradle.
+
+Phase 4: Basic Database Interaction
+SQL (via SQLite): Execute SQL scripts against a temporary SQLite file database. Requires sqlite3 command-line tool or a language library (e.g., Python's sqlite3). Relatively self-contained.
+
+What's Still Further Out / Requires Major Additions:
+
+Frontend Rendering/E2E Tests: (React, Vue, Angular, HTML/CSS) Needs browser automation (Cypress, Playwright) and a browser environment.
+Full Backend Application Tests: (Django, Rails, Spring, Express running as servers) Ideally needs containerization (Docker) or complex process management and HTTP client testing.
+SQL (via Full RDBMS): Needs temporary PostgreSQL/MySQL instances (likely via Docker).
+
+Infrastructure Code: (Terraform, Ansible) Needs specialized validation tools or sandboxed environments.
+
+Mobile Code: (Swift, Kotlin for Android) Needs specific mobile SDKs and build environments.
+
+This tiered list gives you a roadmap. You can start with the core languages, then add more standard languages (Phase 2), then incorporate basic unit testing workflows (Phase 3), and potentially basic SQL (Phase 4), before tackling the much more complex scenarios involving browsers, containers, or full application stacks.

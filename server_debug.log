@@ -1,0 +1,153 @@
+
+> ai-coding-assessment-platform@1.0.0 dev
+> ts-node-dev --respawn --transpile-only --files -r tsconfig-paths/register src/server.ts
+
+[INFO] 20:10:26 ts-node-dev ver. 2.0.0 (using ts-node ver. 10.9.2, typescript ver. 5.8.3)
+Environment variables: {
+  GJS_DEBUG_TOPICS: 'JS ERROR;JS LOG',
+  LESSOPEN: '| /usr/bin/lesspipe %s',
+  CONDA_PROMPT_MODIFIER: '(chikku) ',
+  DATABASE_URL: '[REDACTED]',
+  LANGUAGE: 'en_IN:en',
+  USER: 'chikku',
+  npm_config_user_agent: 'npm/10.8.2 node/v20.19.1 linux x64 workspaces/false',
+  XDG_SESSION_TYPE: 'wayland',
+  GIT_ASKPASS: '/tmp/.mount_cursorfZ3gWq/usr/share/cursor/resources/app/extensions/git/dist/askpass.sh',
+  npm_node_execpath: '/home/chikku/.nvm/versions/node/v20.19.1/bin/node',
+  SHLVL: '0',
+  LD_LIBRARY_PATH: '/usr/local/cuda-12.2/lib64:/tmp/.mount_cursorfZ3gWq/usr/lib/:/tmp/.mount_cursorfZ3gWq/usr/lib32/:/tmp/.mount_cursorfZ3gWq/usr/lib64/:/tmp/.mount_cursorfZ3gWq/lib/:/tmp/.mount_cursorfZ3gWq/lib/i386-linux-gnu/:/tmp/.mount_cursorfZ3gWq/lib/x86_64-linux-gnu/:/tmp/.mount_cursorfZ3gWq/lib/aarch64-linux-gnu/:/tmp/.mount_cursorfZ3gWq/lib32/:/tmp/.mount_cursorfZ3gWq/lib64/:',
+  npm_config_noproxy: '',
+  PORT: '3001',
+  HOME: '/home/chikku',
+  CHROME_DESKTOP: 'cursor.desktop',
+  APPDIR: '/tmp/.mount_cursorfZ3gWq',
+  CONDA_SHLVL: '2',
+  DISABLE_AUTO_UPDATE: 'true',
+  TERM_PROGRAM_VERSION: '0.50.5',
+  DESKTOP_SESSION: 'ubuntu',
+  NVM_BIN: '/home/chikku/.nvm/versions/node/v20.19.1/bin',
+  npm_package_json: '/home/chikku/Desktop/anti/Bansy_windsurf/package.json',
+  NVM_INC: '/home/chikku/.nvm/versions/node/v20.19.1/include/node',
+  PERLLIB: '/tmp/.mount_cursorfZ3gWq/usr/share/perl5/:/tmp/.mount_cursorfZ3gWq/usr/lib/perl5/:',
+  GIO_LAUNCHED_DESKTOP_FILE: '/home/chikku/.local/share/applications/cursor.desktop',
+  GNOME_SHELL_SESSION_MODE: 'ubuntu',
+  GTK_MODULES: 'gail:atk-bridge',
+  PAGER: 'head -n 10000 | cat',
+  VSCODE_GIT_ASKPASS_MAIN: '/tmp/.mount_cursorfZ3gWq/usr/share/cursor/resources/app/extensions/git/dist/askpass-main.js',
+  PS1: '\\[\x1B]633;A\x07\\](chikku) (base) \\[\\e]0;\\u@\\h: \\w\\a\\]${debian_chroot:+($debian_chroot)}\\[\\033[01;32m\\]\\u@\\h\\[\\033[00m\\]:\\[\\033[01;34m\\]\\w\\[\\033[00m\\]\\$ \\[\x1B]633;B\x07\\]',
+  VSCODE_GIT_ASKPASS_NODE: '/tmp/.mount_cursorfZ3gWq/usr/share/cursor/cursor',
+  MANAGERPID: '2736',
+  npm_config_userconfig: '/home/chikku/.npmrc',
+  npm_config_local_prefix: '/home/chikku/Desktop/anti/Bansy_windsurf',
+  SYSTEMD_EXEC_PID: '3200',
+  IM_CONFIG_CHECK_ENV: '1',
+  DBUS_SESSION_BUS_ADDRESS: 'unix:path=/run/user/1000/bus',
+  COLORTERM: 'truecolor',
+  _CE_M: '',
+  GIO_LAUNCHED_DESKTOP_FILE_PID: '59682',
+  COLOR: '0',
+  NVM_DIR: '/home/chikku/.nvm',
+  IM_CONFIG_PHASE: '1',
+  WAYLAND_DISPLAY: 'wayland-0',
+  GITHUB_PRIVATE_KEY: '[REDACTED]',
+  LOGNAME: 'chikku',
+  CONDA_ROOT: '/home/chikku/miniconda3',
+  OWD: '/home/chikku',
+  JOURNAL_STREAM: '8:70903',
+  _: '/home/chikku/.nvm/versions/node/v20.19.1/bin/npm',
+  npm_config_prefix: '/home/chikku/.nvm/versions/node/v20.19.1',
+  npm_config_npm_version: '10.8.2',
+  XDG_SESSION_CLASS: 'user',
+  USERNAME: 'chikku',
+  TERM: 'xterm-256color',
+  npm_config_cache: '/home/chikku/.npm',
+  GNOME_DESKTOP_SESSION_ID: 'this-is-deprecated',
+  _CE_CONDA: '',
+  npm_config_node_gyp: '/home/chikku/.nvm/versions/node/v20.19.1/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js',
+  PATH: '/home/chikku/Desktop/anti/Bansy_windsurf/node_modules/.bin:/home/chikku/Desktop/anti/node_modules/.bin:/home/chikku/Desktop/node_modules/.bin:/home/chikku/node_modules/.bin:/home/node_modules/.bin:/node_modules/.bin:/home/chikku/.nvm/versions/node/v20.19.1/lib/node_modules/npm/node_modules/@npmcli/run-script/lib/node-gyp-bin:/home/chikku/.local/bin:/home/chikku/.local/bin:/home/chikku/.nvm/versions/node/v20.19.1/bin:/usr/local/cuda-12.2/bin:/home/chikku/miniconda3/envs/chikku/bin:/home/chikku/miniconda3/condabin:/tmp/.mount_cursorfZ3gWq/usr/bin:/tmp/.mount_cursorfZ3gWq/usr/sbin:/tmp/.mount_cursorfZ3gWq/usr/games:/tmp/.mount_cursorfZ3gWq/bin:/tmp/.mount_cursorfZ3gWq/sbin:/home/chikku/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/snap/bin:/home/chikku/.local/bin:/home/chikku/.local/bin:/usr/local/cuda-12.2/bin:/home/chikku/.local/bin:/home/chikku/.local/bin:/home/chikku/.nvm/versions/node/v20.19.1/bin:/usr/local/cuda-12.2/bin:/home/chikku/miniconda3/bin:/home/chikku/miniconda3/condabin:/tmp/.mount_cursorfZ3gWq/usr/bin:/tmp/.mount_cursorfZ3gWq/usr/sbin:/tmp/.mount_cursorfZ3gWq/usr/games:/tmp/.mount_cursorfZ3gWq/bin:/tmp/.mount_cursorfZ3gWq/sbin:/home/chikku/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/snap/bin:/tmp/.mount_cursorfZ3gWq/usr/bin:/tmp/.mount_cursorfZ3gWq/usr/sbin:/tmp/.mount_cursorfZ3gWq/usr/games:/tmp/.mount_cursorfZ3gWq/bin:/tmp/.mount_cursorfZ3gWq/sbin:/home/chikku/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/snap/bin',
+  SESSION_MANAGER: 'local/chikku-ROG-Strix-G512LI-G512LI:@/tmp/.ICE-unix/3119,unix/chikku-ROG-Strix-G512LI-G512LI:/tmp/.ICE-unix/3119',
+  INVOCATION_ID: 'e5c1fb29079a4470bbde724c817ecc08',
+  APPIMAGE: '/opt/cursor.AppImage',
+  NODE: '/home/chikku/.nvm/versions/node/v20.19.1/bin/node',
+  npm_package_name: 'ai-coding-assessment-platform',
+  XDG_MENU_PREFIX: 'gnome-',
+  GNOME_SETUP_DISPLAY: ':1',
+  XDG_RUNTIME_DIR: '/run/user/1000',
+  GDK_BACKEND: 'x11',
+  DISPLAY: ':0',
+  LANG: 'en_US.UTF-8',
+  XDG_CURRENT_DESKTOP: 'Unity',
+  GITHUB_INSTALLATION_ID: '68429932',
+  XMODIFIERS: '@im=ibus',
+  XDG_SESSION_DESKTOP: 'ubuntu',
+  XAUTHORITY: '/run/user/1000/.mutter-Xwaylandauth.OU3C92',
+  LS_COLORS: 'rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.webp=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:',
+  GITHUB_CLIENT_ID: 'Iv23liM3PyjCcsla8Xfz',
+  VSCODE_GIT_IPC_HANDLE: '/run/user/1000/vscode-git-9d5a2f69a7.sock',
+  TERM_PROGRAM: 'vscode',
+  CURSOR_TRACE_ID: 'c4e7af79abee4fa4bbdc190c7d2d202b',
+  npm_lifecycle_script: 'ts-node-dev --respawn --transpile-only --files -r tsconfig-paths/register src/server.ts',
+  SSH_AGENT_LAUNCHER: 'gnome-keyring',
+  SSH_AUTH_SOCK: '/run/user/1000/keyring/ssh',
+  GSETTINGS_SCHEMA_DIR: '/tmp/.mount_cursorfZ3gWq/usr/share/glib-2.0/schemas/:',
+  GITHUB_CLIENT_SECRET: '[REDACTED]',
+  CONDA_PYTHON_EXE: '/home/chikku/miniconda3/bin/python',
+  ORIGINAL_XDG_CURRENT_DESKTOP: 'ubuntu:GNOME',
+  SHELL: '/bin/bash',
+  ARGV0: '/opt/cursor.AppImage',
+  npm_package_version: '1.0.0',
+  npm_lifecycle_event: 'dev',
+  QT_ACCESSIBILITY: '1',
+  GITHUB_WEBHOOK_SECRET: '[REDACTED]',
+  EXECUTION_SERVICE_URL: 'https://basny-version-1.onrender.com',
+  GDMSESSION: 'ubuntu',
+  JWT_SECRET: 'b44b2bda71d09c2e2519f51d59708a9d77f34c9e2fdaf93978f98b74218f9b95',
+  LESSCLOSE: '/usr/bin/lesspipe %s %s',
+  CONDA_DEFAULT_ENV: 'base',
+  GJS_DEBUG_OUTPUT: 'stderr',
+  VSCODE_GIT_ASKPASS_EXTRA_ARGS: '',
+  QT_IM_MODULE: 'ibus',
+  npm_config_globalconfig: '/home/chikku/.nvm/versions/node/v20.19.1/etc/npmrc',
+  npm_config_init_module: '/home/chikku/.npm-init.js',
+  PWD: '/home/chikku/Desktop/anti/Bansy_windsurf',
+  npm_execpath: '/home/chikku/.nvm/versions/node/v20.19.1/lib/node_modules/npm/bin/npm-cli.js',
+  XDG_CONFIG_DIRS: '/etc/xdg/xdg-ubuntu:/etc/xdg',
+  CONDA_EXE: '/home/chikku/miniconda3/bin/conda',
+  GEMINI_API_KEY: '[REDACTED]',
+  NVM_CD_FLAGS: '',
+  XDG_DATA_DIRS: '/tmp/.mount_cursorfZ3gWq/usr/share/:/usr/local/share:/usr/share:/usr/share/ubuntu:/usr/local/share/:/usr/share/:/var/lib/snapd/desktop',
+  npm_config_global_prefix: '/home/chikku/.nvm/versions/node/v20.19.1',
+  npm_command: 'run-script',
+  CODE_SERVER_URL: 'https://basny-version-1.onrender.com',
+  CONDA_PREFIX: '/home/chikku/miniconda3/envs/chikku',
+  QT_PLUGIN_PATH: '/tmp/.mount_cursorfZ3gWq/usr/lib/qt4/plugins/:/tmp/.mount_cursorfZ3gWq/usr/lib/i386-linux-gnu/qt4/plugins/:/tmp/.mount_cursorfZ3gWq/usr/lib/x86_64-linux-gnu/qt4/plugins/:/tmp/.mount_cursorfZ3gWq/usr/lib/aarch64-linux-gnu/qt4/plugins/:/tmp/.mount_cursorfZ3gWq/usr/lib32/qt4/plugins/:/tmp/.mount_cursorfZ3gWq/usr/lib64/qt4/plugins/:/tmp/.mount_cursorfZ3gWq/usr/lib/qt5/plugins/:/tmp/.mount_cursorfZ3gWq/usr/lib/i386-linux-gnu/qt5/plugins/:/tmp/.mount_cursorfZ3gWq/usr/lib/x86_64-linux-gnu/qt5/plugins/:/tmp/.mount_cursorfZ3gWq/usr/lib/aarch64-linux-gnu/qt5/plugins/:/tmp/.mount_cursorfZ3gWq/usr/lib32/qt5/plugins/:/tmp/.mount_cursorfZ3gWq/usr/lib64/qt5/plugins/:',
+  GITHUB_ORG_NAME: 'bansy-hire-org',
+  GITHUB_APP_ID: '1325185',
+  FRONTEND_URL: 'http://localhost:5173',
+  INIT_CWD: '/home/chikku/Desktop/anti/Bansy_windsurf',
+  EDITOR: 'vi',
+  TS_NODE_DEV: 'true'
+}
+Initializing Gemini API with key: ***TN44
+Raw private key length: 31
+Raw private key first 50 chars: -----BEGIN RSA PRIVATE KEY-----
+Raw private key last 50 chars: -----BEGIN RSA PRIVATE KEY-----
+Processed private key length: 31
+Processed private key first 50 chars: -----BEGIN RSA PRIVATE KEY-----
+Processed private key last 50 chars: -----BEGIN RSA PRIVATE KEY-----
+Private key validation failed:
+Contains BEGIN: true
+Contains END: false
+Failed to initialize Octokit: Invalid private key format: missing BEGIN/END markers
+Error: Invalid private key format: missing BEGIN/END markers
+    at new GithubService (/home/chikku/Desktop/anti/Bansy_windsurf/src/services/githubService.ts:72:17)
+    at Object.<anonymous> (/home/chikku/Desktop/anti/Bansy_windsurf/src/controllers/aiController.ts:18:23)
+    at Module._compile (node:internal/modules/cjs/loader:1529:14)
+    at Module._compile (/home/chikku/Desktop/anti/Bansy_windsurf/node_modules/source-map-support/source-map-support.js:568:25)
+    at Module.m._compile (/tmp/ts-node-dev-hook-1835396206334987.js:69:33)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+    at require.extensions..jsx.require.extensions..js (/tmp/ts-node-dev-hook-1835396206334987.js:114:20)
+    at require.extensions.<computed> (/tmp/ts-node-dev-hook-1835396206334987.js:71:20)
+    at Object.nodeDevHook [as .ts] (/home/chikku/Desktop/anti/Bansy_windsurf/node_modules/ts-node-dev/lib/hook.js:63:13)
+    at Module.load (node:internal/modules/cjs/loader:1275:32)
+[ERROR] 20:10:27 Error: Invalid private key format: missing BEGIN/END markers
