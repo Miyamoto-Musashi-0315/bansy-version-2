@@ -60,14 +60,9 @@ export type TestFile = $Result.DefaultSelection<Prisma.$TestFilePayload>
 export type Submission = $Result.DefaultSelection<Prisma.$SubmissionPayload>
 /**
  * Model SubmissionEvent
- * 
+ * --- NEW: GitHub / CI activity timeline ---
  */
 export type SubmissionEvent = $Result.DefaultSelection<Prisma.$SubmissionEventPayload>
-/**
- * Model SubmissionSnapshot
- * 
- */
-export type SubmissionSnapshot = $Result.DefaultSelection<Prisma.$SubmissionSnapshotPayload>
 
 /**
  * Enums
@@ -310,16 +305,6 @@ export class PrismaClient<
     * ```
     */
   get submissionEvent(): Prisma.SubmissionEventDelegate<ExtArgs, ClientOptions>;
-
-  /**
-   * `prisma.submissionSnapshot`: Exposes CRUD operations for the **SubmissionSnapshot** model.
-    * Example usage:
-    * ```ts
-    * // Fetch zero or more SubmissionSnapshots
-    * const submissionSnapshots = await prisma.submissionSnapshot.findMany()
-    * ```
-    */
-  get submissionSnapshot(): Prisma.SubmissionSnapshotDelegate<ExtArgs, ClientOptions>;
 }
 
 export namespace Prisma {
@@ -769,8 +754,7 @@ export namespace Prisma {
     TestCase: 'TestCase',
     TestFile: 'TestFile',
     Submission: 'Submission',
-    SubmissionEvent: 'SubmissionEvent',
-    SubmissionSnapshot: 'SubmissionSnapshot'
+    SubmissionEvent: 'SubmissionEvent'
   };
 
   export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -789,7 +773,7 @@ export namespace Prisma {
       omit: GlobalOmitOptions
     }
     meta: {
-      modelProps: "user" | "company" | "jobDescription" | "candidate" | "resume" | "test" | "testCase" | "testFile" | "submission" | "submissionEvent" | "submissionSnapshot"
+      modelProps: "user" | "company" | "jobDescription" | "candidate" | "resume" | "test" | "testCase" | "testFile" | "submission" | "submissionEvent"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -1533,80 +1517,6 @@ export namespace Prisma {
           }
         }
       }
-      SubmissionSnapshot: {
-        payload: Prisma.$SubmissionSnapshotPayload<ExtArgs>
-        fields: Prisma.SubmissionSnapshotFieldRefs
-        operations: {
-          findUnique: {
-            args: Prisma.SubmissionSnapshotFindUniqueArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$SubmissionSnapshotPayload> | null
-          }
-          findUniqueOrThrow: {
-            args: Prisma.SubmissionSnapshotFindUniqueOrThrowArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$SubmissionSnapshotPayload>
-          }
-          findFirst: {
-            args: Prisma.SubmissionSnapshotFindFirstArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$SubmissionSnapshotPayload> | null
-          }
-          findFirstOrThrow: {
-            args: Prisma.SubmissionSnapshotFindFirstOrThrowArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$SubmissionSnapshotPayload>
-          }
-          findMany: {
-            args: Prisma.SubmissionSnapshotFindManyArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$SubmissionSnapshotPayload>[]
-          }
-          create: {
-            args: Prisma.SubmissionSnapshotCreateArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$SubmissionSnapshotPayload>
-          }
-          createMany: {
-            args: Prisma.SubmissionSnapshotCreateManyArgs<ExtArgs>
-            result: BatchPayload
-          }
-          createManyAndReturn: {
-            args: Prisma.SubmissionSnapshotCreateManyAndReturnArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$SubmissionSnapshotPayload>[]
-          }
-          delete: {
-            args: Prisma.SubmissionSnapshotDeleteArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$SubmissionSnapshotPayload>
-          }
-          update: {
-            args: Prisma.SubmissionSnapshotUpdateArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$SubmissionSnapshotPayload>
-          }
-          deleteMany: {
-            args: Prisma.SubmissionSnapshotDeleteManyArgs<ExtArgs>
-            result: BatchPayload
-          }
-          updateMany: {
-            args: Prisma.SubmissionSnapshotUpdateManyArgs<ExtArgs>
-            result: BatchPayload
-          }
-          updateManyAndReturn: {
-            args: Prisma.SubmissionSnapshotUpdateManyAndReturnArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$SubmissionSnapshotPayload>[]
-          }
-          upsert: {
-            args: Prisma.SubmissionSnapshotUpsertArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$SubmissionSnapshotPayload>
-          }
-          aggregate: {
-            args: Prisma.SubmissionSnapshotAggregateArgs<ExtArgs>
-            result: $Utils.Optional<AggregateSubmissionSnapshot>
-          }
-          groupBy: {
-            args: Prisma.SubmissionSnapshotGroupByArgs<ExtArgs>
-            result: $Utils.Optional<SubmissionSnapshotGroupByOutputType>[]
-          }
-          count: {
-            args: Prisma.SubmissionSnapshotCountArgs<ExtArgs>
-            result: $Utils.Optional<SubmissionSnapshotCountAggregateOutputType> | number
-          }
-        }
-      }
     }
   } & {
     other: {
@@ -1701,7 +1611,6 @@ export namespace Prisma {
     testFile?: TestFileOmit
     submission?: SubmissionOmit
     submissionEvent?: SubmissionEventOmit
-    submissionSnapshot?: SubmissionSnapshotOmit
   }
 
   /* Types for Logging */
@@ -11230,10 +11139,10 @@ export namespace Prisma {
     updatedAt: number
     status: number
     result: number
+    feedback: number
     testId: number
     userId: number
     aiScore: number
-    feedback: number
     _all: number
   }
 
@@ -11272,10 +11181,10 @@ export namespace Prisma {
     updatedAt?: true
     status?: true
     result?: true
+    feedback?: true
     testId?: true
     userId?: true
     aiScore?: true
-    feedback?: true
     _all?: true
   }
 
@@ -11371,10 +11280,10 @@ export namespace Prisma {
     updatedAt: Date
     status: string
     result: JsonValue | null
+    feedback: JsonValue | null
     testId: string
     userId: string | null
     aiScore: number | null
-    feedback: JsonValue | null
     _count: SubmissionCountAggregateOutputType | null
     _avg: SubmissionAvgAggregateOutputType | null
     _sum: SubmissionSumAggregateOutputType | null
@@ -11402,13 +11311,12 @@ export namespace Prisma {
     updatedAt?: boolean
     status?: boolean
     result?: boolean
+    feedback?: boolean
     testId?: boolean
     userId?: boolean
     aiScore?: boolean
-    feedback?: boolean
     test?: boolean | TestDefaultArgs<ExtArgs>
     user?: boolean | Submission$userArgs<ExtArgs>
-    snapshot?: boolean | Submission$snapshotArgs<ExtArgs>
   }, ExtArgs["result"]["submission"]>
 
   export type SubmissionSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
@@ -11417,10 +11325,10 @@ export namespace Prisma {
     updatedAt?: boolean
     status?: boolean
     result?: boolean
+    feedback?: boolean
     testId?: boolean
     userId?: boolean
     aiScore?: boolean
-    feedback?: boolean
     test?: boolean | TestDefaultArgs<ExtArgs>
     user?: boolean | Submission$userArgs<ExtArgs>
   }, ExtArgs["result"]["submission"]>
@@ -11431,10 +11339,10 @@ export namespace Prisma {
     updatedAt?: boolean
     status?: boolean
     result?: boolean
+    feedback?: boolean
     testId?: boolean
     userId?: boolean
     aiScore?: boolean
-    feedback?: boolean
     test?: boolean | TestDefaultArgs<ExtArgs>
     user?: boolean | Submission$userArgs<ExtArgs>
   }, ExtArgs["result"]["submission"]>
@@ -11445,17 +11353,16 @@ export namespace Prisma {
     updatedAt?: boolean
     status?: boolean
     result?: boolean
+    feedback?: boolean
     testId?: boolean
     userId?: boolean
     aiScore?: boolean
-    feedback?: boolean
   }
 
-  export type SubmissionOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "createdAt" | "updatedAt" | "status" | "result" | "testId" | "userId" | "aiScore" | "feedback", ExtArgs["result"]["submission"]>
+  export type SubmissionOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "createdAt" | "updatedAt" | "status" | "result" | "feedback" | "testId" | "userId" | "aiScore", ExtArgs["result"]["submission"]>
   export type SubmissionInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     test?: boolean | TestDefaultArgs<ExtArgs>
     user?: boolean | Submission$userArgs<ExtArgs>
-    snapshot?: boolean | Submission$snapshotArgs<ExtArgs>
   }
   export type SubmissionIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     test?: boolean | TestDefaultArgs<ExtArgs>
@@ -11471,7 +11378,6 @@ export namespace Prisma {
     objects: {
       test: Prisma.$TestPayload<ExtArgs>
       user: Prisma.$UserPayload<ExtArgs> | null
-      snapshot: Prisma.$SubmissionSnapshotPayload<ExtArgs> | null
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
@@ -11479,10 +11385,10 @@ export namespace Prisma {
       updatedAt: Date
       status: string
       result: Prisma.JsonValue | null
+      feedback: Prisma.JsonValue | null
       testId: string
       userId: string | null
       aiScore: number | null
-      feedback: Prisma.JsonValue | null
     }, ExtArgs["result"]["submission"]>
     composites: {}
   }
@@ -11879,7 +11785,6 @@ export namespace Prisma {
     readonly [Symbol.toStringTag]: "PrismaPromise"
     test<T extends TestDefaultArgs<ExtArgs> = {}>(args?: Subset<T, TestDefaultArgs<ExtArgs>>): Prisma__TestClient<$Result.GetResult<Prisma.$TestPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
     user<T extends Submission$userArgs<ExtArgs> = {}>(args?: Subset<T, Submission$userArgs<ExtArgs>>): Prisma__UserClient<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
-    snapshot<T extends Submission$snapshotArgs<ExtArgs> = {}>(args?: Subset<T, Submission$snapshotArgs<ExtArgs>>): Prisma__SubmissionSnapshotClient<$Result.GetResult<Prisma.$SubmissionSnapshotPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -11914,10 +11819,10 @@ export namespace Prisma {
     readonly updatedAt: FieldRef<"Submission", 'DateTime'>
     readonly status: FieldRef<"Submission", 'String'>
     readonly result: FieldRef<"Submission", 'Json'>
+    readonly feedback: FieldRef<"Submission", 'Json'>
     readonly testId: FieldRef<"Submission", 'String'>
     readonly userId: FieldRef<"Submission", 'String'>
     readonly aiScore: FieldRef<"Submission", 'Float'>
-    readonly feedback: FieldRef<"Submission", 'Json'>
   }
     
 
@@ -12333,25 +12238,6 @@ export namespace Prisma {
   }
 
   /**
-   * Submission.snapshot
-   */
-  export type Submission$snapshotArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the SubmissionSnapshot
-     */
-    select?: SubmissionSnapshotSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SubmissionSnapshot
-     */
-    omit?: SubmissionSnapshotOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: SubmissionSnapshotInclude<ExtArgs> | null
-    where?: SubmissionSnapshotWhereInput
-  }
-
-  /**
    * Submission without action
    */
   export type SubmissionDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -12388,8 +12274,8 @@ export namespace Prisma {
     pusher: string | null
     eventType: string | null
     receivedAt: Date | null
-    testId: string | null
     candidateId: string | null
+    testId: string | null
   }
 
   export type SubmissionEventMaxAggregateOutputType = {
@@ -12400,8 +12286,8 @@ export namespace Prisma {
     pusher: string | null
     eventType: string | null
     receivedAt: Date | null
-    testId: string | null
     candidateId: string | null
+    testId: string | null
   }
 
   export type SubmissionEventCountAggregateOutputType = {
@@ -12412,8 +12298,8 @@ export namespace Prisma {
     pusher: number
     eventType: number
     receivedAt: number
-    testId: number
     candidateId: number
+    testId: number
     _all: number
   }
 
@@ -12426,8 +12312,8 @@ export namespace Prisma {
     pusher?: true
     eventType?: true
     receivedAt?: true
-    testId?: true
     candidateId?: true
+    testId?: true
   }
 
   export type SubmissionEventMaxAggregateInputType = {
@@ -12438,8 +12324,8 @@ export namespace Prisma {
     pusher?: true
     eventType?: true
     receivedAt?: true
-    testId?: true
     candidateId?: true
+    testId?: true
   }
 
   export type SubmissionEventCountAggregateInputType = {
@@ -12450,8 +12336,8 @@ export namespace Prisma {
     pusher?: true
     eventType?: true
     receivedAt?: true
-    testId?: true
     candidateId?: true
+    testId?: true
     _all?: true
   }
 
@@ -12535,8 +12421,8 @@ export namespace Prisma {
     pusher: string
     eventType: string
     receivedAt: Date
-    testId: string | null
     candidateId: string | null
+    testId: string | null
     _count: SubmissionEventCountAggregateOutputType | null
     _min: SubmissionEventMinAggregateOutputType | null
     _max: SubmissionEventMaxAggregateOutputType | null
@@ -12564,10 +12450,10 @@ export namespace Prisma {
     pusher?: boolean
     eventType?: boolean
     receivedAt?: boolean
-    testId?: boolean
     candidateId?: boolean
-    test?: boolean | SubmissionEvent$testArgs<ExtArgs>
+    testId?: boolean
     candidate?: boolean | SubmissionEvent$candidateArgs<ExtArgs>
+    test?: boolean | SubmissionEvent$testArgs<ExtArgs>
   }, ExtArgs["result"]["submissionEvent"]>
 
   export type SubmissionEventSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
@@ -12578,10 +12464,10 @@ export namespace Prisma {
     pusher?: boolean
     eventType?: boolean
     receivedAt?: boolean
-    testId?: boolean
     candidateId?: boolean
-    test?: boolean | SubmissionEvent$testArgs<ExtArgs>
+    testId?: boolean
     candidate?: boolean | SubmissionEvent$candidateArgs<ExtArgs>
+    test?: boolean | SubmissionEvent$testArgs<ExtArgs>
   }, ExtArgs["result"]["submissionEvent"]>
 
   export type SubmissionEventSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
@@ -12592,10 +12478,10 @@ export namespace Prisma {
     pusher?: boolean
     eventType?: boolean
     receivedAt?: boolean
-    testId?: boolean
     candidateId?: boolean
-    test?: boolean | SubmissionEvent$testArgs<ExtArgs>
+    testId?: boolean
     candidate?: boolean | SubmissionEvent$candidateArgs<ExtArgs>
+    test?: boolean | SubmissionEvent$testArgs<ExtArgs>
   }, ExtArgs["result"]["submissionEvent"]>
 
   export type SubmissionEventSelectScalar = {
@@ -12606,29 +12492,29 @@ export namespace Prisma {
     pusher?: boolean
     eventType?: boolean
     receivedAt?: boolean
-    testId?: boolean
     candidateId?: boolean
+    testId?: boolean
   }
 
-  export type SubmissionEventOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "repoName" | "commitSha" | "branch" | "pusher" | "eventType" | "receivedAt" | "testId" | "candidateId", ExtArgs["result"]["submissionEvent"]>
+  export type SubmissionEventOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "repoName" | "commitSha" | "branch" | "pusher" | "eventType" | "receivedAt" | "candidateId" | "testId", ExtArgs["result"]["submissionEvent"]>
   export type SubmissionEventInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    test?: boolean | SubmissionEvent$testArgs<ExtArgs>
     candidate?: boolean | SubmissionEvent$candidateArgs<ExtArgs>
+    test?: boolean | SubmissionEvent$testArgs<ExtArgs>
   }
   export type SubmissionEventIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    test?: boolean | SubmissionEvent$testArgs<ExtArgs>
     candidate?: boolean | SubmissionEvent$candidateArgs<ExtArgs>
+    test?: boolean | SubmissionEvent$testArgs<ExtArgs>
   }
   export type SubmissionEventIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    test?: boolean | SubmissionEvent$testArgs<ExtArgs>
     candidate?: boolean | SubmissionEvent$candidateArgs<ExtArgs>
+    test?: boolean | SubmissionEvent$testArgs<ExtArgs>
   }
 
   export type $SubmissionEventPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     name: "SubmissionEvent"
     objects: {
-      test: Prisma.$TestPayload<ExtArgs> | null
       candidate: Prisma.$CandidatePayload<ExtArgs> | null
+      test: Prisma.$TestPayload<ExtArgs> | null
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
@@ -12638,8 +12524,8 @@ export namespace Prisma {
       pusher: string
       eventType: string
       receivedAt: Date
-      testId: string | null
       candidateId: string | null
+      testId: string | null
     }, ExtArgs["result"]["submissionEvent"]>
     composites: {}
   }
@@ -13034,8 +12920,8 @@ export namespace Prisma {
    */
   export interface Prisma__SubmissionEventClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise"
-    test<T extends SubmissionEvent$testArgs<ExtArgs> = {}>(args?: Subset<T, SubmissionEvent$testArgs<ExtArgs>>): Prisma__TestClient<$Result.GetResult<Prisma.$TestPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
     candidate<T extends SubmissionEvent$candidateArgs<ExtArgs> = {}>(args?: Subset<T, SubmissionEvent$candidateArgs<ExtArgs>>): Prisma__CandidateClient<$Result.GetResult<Prisma.$CandidatePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    test<T extends SubmissionEvent$testArgs<ExtArgs> = {}>(args?: Subset<T, SubmissionEvent$testArgs<ExtArgs>>): Prisma__TestClient<$Result.GetResult<Prisma.$TestPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -13072,8 +12958,8 @@ export namespace Prisma {
     readonly pusher: FieldRef<"SubmissionEvent", 'String'>
     readonly eventType: FieldRef<"SubmissionEvent", 'String'>
     readonly receivedAt: FieldRef<"SubmissionEvent", 'DateTime'>
-    readonly testId: FieldRef<"SubmissionEvent", 'String'>
     readonly candidateId: FieldRef<"SubmissionEvent", 'String'>
+    readonly testId: FieldRef<"SubmissionEvent", 'String'>
   }
     
 
@@ -13470,25 +13356,6 @@ export namespace Prisma {
   }
 
   /**
-   * SubmissionEvent.test
-   */
-  export type SubmissionEvent$testArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the Test
-     */
-    select?: TestSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the Test
-     */
-    omit?: TestOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: TestInclude<ExtArgs> | null
-    where?: TestWhereInput
-  }
-
-  /**
    * SubmissionEvent.candidate
    */
   export type SubmissionEvent$candidateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -13508,6 +13375,25 @@ export namespace Prisma {
   }
 
   /**
+   * SubmissionEvent.test
+   */
+  export type SubmissionEvent$testArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Test
+     */
+    select?: TestSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Test
+     */
+    omit?: TestOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TestInclude<ExtArgs> | null
+    where?: TestWhereInput
+  }
+
+  /**
    * SubmissionEvent without action
    */
   export type SubmissionEventDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -13523,1064 +13409,6 @@ export namespace Prisma {
      * Choose, which related nodes to fetch as well
      */
     include?: SubmissionEventInclude<ExtArgs> | null
-  }
-
-
-  /**
-   * Model SubmissionSnapshot
-   */
-
-  export type AggregateSubmissionSnapshot = {
-    _count: SubmissionSnapshotCountAggregateOutputType | null
-    _min: SubmissionSnapshotMinAggregateOutputType | null
-    _max: SubmissionSnapshotMaxAggregateOutputType | null
-  }
-
-  export type SubmissionSnapshotMinAggregateOutputType = {
-    id: string | null
-    submissionId: string | null
-    archivePath: string | null
-    commitSha: string | null
-    createdAt: Date | null
-  }
-
-  export type SubmissionSnapshotMaxAggregateOutputType = {
-    id: string | null
-    submissionId: string | null
-    archivePath: string | null
-    commitSha: string | null
-    createdAt: Date | null
-  }
-
-  export type SubmissionSnapshotCountAggregateOutputType = {
-    id: number
-    submissionId: number
-    archivePath: number
-    commitSha: number
-    createdAt: number
-    _all: number
-  }
-
-
-  export type SubmissionSnapshotMinAggregateInputType = {
-    id?: true
-    submissionId?: true
-    archivePath?: true
-    commitSha?: true
-    createdAt?: true
-  }
-
-  export type SubmissionSnapshotMaxAggregateInputType = {
-    id?: true
-    submissionId?: true
-    archivePath?: true
-    commitSha?: true
-    createdAt?: true
-  }
-
-  export type SubmissionSnapshotCountAggregateInputType = {
-    id?: true
-    submissionId?: true
-    archivePath?: true
-    commitSha?: true
-    createdAt?: true
-    _all?: true
-  }
-
-  export type SubmissionSnapshotAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Filter which SubmissionSnapshot to aggregate.
-     */
-    where?: SubmissionSnapshotWhereInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
-     * Determine the order of SubmissionSnapshots to fetch.
-     */
-    orderBy?: SubmissionSnapshotOrderByWithRelationInput | SubmissionSnapshotOrderByWithRelationInput[]
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
-     * Sets the start position
-     */
-    cursor?: SubmissionSnapshotWhereUniqueInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Take `±n` SubmissionSnapshots from the position of the cursor.
-     */
-    take?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Skip the first `n` SubmissionSnapshots.
-     */
-    skip?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-     * 
-     * Count returned SubmissionSnapshots
-    **/
-    _count?: true | SubmissionSnapshotCountAggregateInputType
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-     * 
-     * Select which fields to find the minimum value
-    **/
-    _min?: SubmissionSnapshotMinAggregateInputType
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-     * 
-     * Select which fields to find the maximum value
-    **/
-    _max?: SubmissionSnapshotMaxAggregateInputType
-  }
-
-  export type GetSubmissionSnapshotAggregateType<T extends SubmissionSnapshotAggregateArgs> = {
-        [P in keyof T & keyof AggregateSubmissionSnapshot]: P extends '_count' | 'count'
-      ? T[P] extends true
-        ? number
-        : GetScalarType<T[P], AggregateSubmissionSnapshot[P]>
-      : GetScalarType<T[P], AggregateSubmissionSnapshot[P]>
-  }
-
-
-
-
-  export type SubmissionSnapshotGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    where?: SubmissionSnapshotWhereInput
-    orderBy?: SubmissionSnapshotOrderByWithAggregationInput | SubmissionSnapshotOrderByWithAggregationInput[]
-    by: SubmissionSnapshotScalarFieldEnum[] | SubmissionSnapshotScalarFieldEnum
-    having?: SubmissionSnapshotScalarWhereWithAggregatesInput
-    take?: number
-    skip?: number
-    _count?: SubmissionSnapshotCountAggregateInputType | true
-    _min?: SubmissionSnapshotMinAggregateInputType
-    _max?: SubmissionSnapshotMaxAggregateInputType
-  }
-
-  export type SubmissionSnapshotGroupByOutputType = {
-    id: string
-    submissionId: string
-    archivePath: string
-    commitSha: string
-    createdAt: Date
-    _count: SubmissionSnapshotCountAggregateOutputType | null
-    _min: SubmissionSnapshotMinAggregateOutputType | null
-    _max: SubmissionSnapshotMaxAggregateOutputType | null
-  }
-
-  type GetSubmissionSnapshotGroupByPayload<T extends SubmissionSnapshotGroupByArgs> = Prisma.PrismaPromise<
-    Array<
-      PickEnumerable<SubmissionSnapshotGroupByOutputType, T['by']> &
-        {
-          [P in ((keyof T) & (keyof SubmissionSnapshotGroupByOutputType))]: P extends '_count'
-            ? T[P] extends boolean
-              ? number
-              : GetScalarType<T[P], SubmissionSnapshotGroupByOutputType[P]>
-            : GetScalarType<T[P], SubmissionSnapshotGroupByOutputType[P]>
-        }
-      >
-    >
-
-
-  export type SubmissionSnapshotSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
-    id?: boolean
-    submissionId?: boolean
-    archivePath?: boolean
-    commitSha?: boolean
-    createdAt?: boolean
-    submission?: boolean | SubmissionDefaultArgs<ExtArgs>
-  }, ExtArgs["result"]["submissionSnapshot"]>
-
-  export type SubmissionSnapshotSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
-    id?: boolean
-    submissionId?: boolean
-    archivePath?: boolean
-    commitSha?: boolean
-    createdAt?: boolean
-    submission?: boolean | SubmissionDefaultArgs<ExtArgs>
-  }, ExtArgs["result"]["submissionSnapshot"]>
-
-  export type SubmissionSnapshotSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
-    id?: boolean
-    submissionId?: boolean
-    archivePath?: boolean
-    commitSha?: boolean
-    createdAt?: boolean
-    submission?: boolean | SubmissionDefaultArgs<ExtArgs>
-  }, ExtArgs["result"]["submissionSnapshot"]>
-
-  export type SubmissionSnapshotSelectScalar = {
-    id?: boolean
-    submissionId?: boolean
-    archivePath?: boolean
-    commitSha?: boolean
-    createdAt?: boolean
-  }
-
-  export type SubmissionSnapshotOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "submissionId" | "archivePath" | "commitSha" | "createdAt", ExtArgs["result"]["submissionSnapshot"]>
-  export type SubmissionSnapshotInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    submission?: boolean | SubmissionDefaultArgs<ExtArgs>
-  }
-  export type SubmissionSnapshotIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    submission?: boolean | SubmissionDefaultArgs<ExtArgs>
-  }
-  export type SubmissionSnapshotIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    submission?: boolean | SubmissionDefaultArgs<ExtArgs>
-  }
-
-  export type $SubmissionSnapshotPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    name: "SubmissionSnapshot"
-    objects: {
-      submission: Prisma.$SubmissionPayload<ExtArgs>
-    }
-    scalars: $Extensions.GetPayloadResult<{
-      id: string
-      submissionId: string
-      archivePath: string
-      commitSha: string
-      createdAt: Date
-    }, ExtArgs["result"]["submissionSnapshot"]>
-    composites: {}
-  }
-
-  type SubmissionSnapshotGetPayload<S extends boolean | null | undefined | SubmissionSnapshotDefaultArgs> = $Result.GetResult<Prisma.$SubmissionSnapshotPayload, S>
-
-  type SubmissionSnapshotCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
-    Omit<SubmissionSnapshotFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
-      select?: SubmissionSnapshotCountAggregateInputType | true
-    }
-
-  export interface SubmissionSnapshotDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
-    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['SubmissionSnapshot'], meta: { name: 'SubmissionSnapshot' } }
-    /**
-     * Find zero or one SubmissionSnapshot that matches the filter.
-     * @param {SubmissionSnapshotFindUniqueArgs} args - Arguments to find a SubmissionSnapshot
-     * @example
-     * // Get one SubmissionSnapshot
-     * const submissionSnapshot = await prisma.submissionSnapshot.findUnique({
-     *   where: {
-     *     // ... provide filter here
-     *   }
-     * })
-     */
-    findUnique<T extends SubmissionSnapshotFindUniqueArgs>(args: SelectSubset<T, SubmissionSnapshotFindUniqueArgs<ExtArgs>>): Prisma__SubmissionSnapshotClient<$Result.GetResult<Prisma.$SubmissionSnapshotPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Find one SubmissionSnapshot that matches the filter or throw an error with `error.code='P2025'`
-     * if no matches were found.
-     * @param {SubmissionSnapshotFindUniqueOrThrowArgs} args - Arguments to find a SubmissionSnapshot
-     * @example
-     * // Get one SubmissionSnapshot
-     * const submissionSnapshot = await prisma.submissionSnapshot.findUniqueOrThrow({
-     *   where: {
-     *     // ... provide filter here
-     *   }
-     * })
-     */
-    findUniqueOrThrow<T extends SubmissionSnapshotFindUniqueOrThrowArgs>(args: SelectSubset<T, SubmissionSnapshotFindUniqueOrThrowArgs<ExtArgs>>): Prisma__SubmissionSnapshotClient<$Result.GetResult<Prisma.$SubmissionSnapshotPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Find the first SubmissionSnapshot that matches the filter.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {SubmissionSnapshotFindFirstArgs} args - Arguments to find a SubmissionSnapshot
-     * @example
-     * // Get one SubmissionSnapshot
-     * const submissionSnapshot = await prisma.submissionSnapshot.findFirst({
-     *   where: {
-     *     // ... provide filter here
-     *   }
-     * })
-     */
-    findFirst<T extends SubmissionSnapshotFindFirstArgs>(args?: SelectSubset<T, SubmissionSnapshotFindFirstArgs<ExtArgs>>): Prisma__SubmissionSnapshotClient<$Result.GetResult<Prisma.$SubmissionSnapshotPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Find the first SubmissionSnapshot that matches the filter or
-     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {SubmissionSnapshotFindFirstOrThrowArgs} args - Arguments to find a SubmissionSnapshot
-     * @example
-     * // Get one SubmissionSnapshot
-     * const submissionSnapshot = await prisma.submissionSnapshot.findFirstOrThrow({
-     *   where: {
-     *     // ... provide filter here
-     *   }
-     * })
-     */
-    findFirstOrThrow<T extends SubmissionSnapshotFindFirstOrThrowArgs>(args?: SelectSubset<T, SubmissionSnapshotFindFirstOrThrowArgs<ExtArgs>>): Prisma__SubmissionSnapshotClient<$Result.GetResult<Prisma.$SubmissionSnapshotPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Find zero or more SubmissionSnapshots that matches the filter.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {SubmissionSnapshotFindManyArgs} args - Arguments to filter and select certain fields only.
-     * @example
-     * // Get all SubmissionSnapshots
-     * const submissionSnapshots = await prisma.submissionSnapshot.findMany()
-     * 
-     * // Get first 10 SubmissionSnapshots
-     * const submissionSnapshots = await prisma.submissionSnapshot.findMany({ take: 10 })
-     * 
-     * // Only select the `id`
-     * const submissionSnapshotWithIdOnly = await prisma.submissionSnapshot.findMany({ select: { id: true } })
-     * 
-     */
-    findMany<T extends SubmissionSnapshotFindManyArgs>(args?: SelectSubset<T, SubmissionSnapshotFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SubmissionSnapshotPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
-
-    /**
-     * Create a SubmissionSnapshot.
-     * @param {SubmissionSnapshotCreateArgs} args - Arguments to create a SubmissionSnapshot.
-     * @example
-     * // Create one SubmissionSnapshot
-     * const SubmissionSnapshot = await prisma.submissionSnapshot.create({
-     *   data: {
-     *     // ... data to create a SubmissionSnapshot
-     *   }
-     * })
-     * 
-     */
-    create<T extends SubmissionSnapshotCreateArgs>(args: SelectSubset<T, SubmissionSnapshotCreateArgs<ExtArgs>>): Prisma__SubmissionSnapshotClient<$Result.GetResult<Prisma.$SubmissionSnapshotPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Create many SubmissionSnapshots.
-     * @param {SubmissionSnapshotCreateManyArgs} args - Arguments to create many SubmissionSnapshots.
-     * @example
-     * // Create many SubmissionSnapshots
-     * const submissionSnapshot = await prisma.submissionSnapshot.createMany({
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     *     
-     */
-    createMany<T extends SubmissionSnapshotCreateManyArgs>(args?: SelectSubset<T, SubmissionSnapshotCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
-
-    /**
-     * Create many SubmissionSnapshots and returns the data saved in the database.
-     * @param {SubmissionSnapshotCreateManyAndReturnArgs} args - Arguments to create many SubmissionSnapshots.
-     * @example
-     * // Create many SubmissionSnapshots
-     * const submissionSnapshot = await prisma.submissionSnapshot.createManyAndReturn({
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * 
-     * // Create many SubmissionSnapshots and only return the `id`
-     * const submissionSnapshotWithIdOnly = await prisma.submissionSnapshot.createManyAndReturn({
-     *   select: { id: true },
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * 
-     */
-    createManyAndReturn<T extends SubmissionSnapshotCreateManyAndReturnArgs>(args?: SelectSubset<T, SubmissionSnapshotCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SubmissionSnapshotPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
-
-    /**
-     * Delete a SubmissionSnapshot.
-     * @param {SubmissionSnapshotDeleteArgs} args - Arguments to delete one SubmissionSnapshot.
-     * @example
-     * // Delete one SubmissionSnapshot
-     * const SubmissionSnapshot = await prisma.submissionSnapshot.delete({
-     *   where: {
-     *     // ... filter to delete one SubmissionSnapshot
-     *   }
-     * })
-     * 
-     */
-    delete<T extends SubmissionSnapshotDeleteArgs>(args: SelectSubset<T, SubmissionSnapshotDeleteArgs<ExtArgs>>): Prisma__SubmissionSnapshotClient<$Result.GetResult<Prisma.$SubmissionSnapshotPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Update one SubmissionSnapshot.
-     * @param {SubmissionSnapshotUpdateArgs} args - Arguments to update one SubmissionSnapshot.
-     * @example
-     * // Update one SubmissionSnapshot
-     * const submissionSnapshot = await prisma.submissionSnapshot.update({
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: {
-     *     // ... provide data here
-     *   }
-     * })
-     * 
-     */
-    update<T extends SubmissionSnapshotUpdateArgs>(args: SelectSubset<T, SubmissionSnapshotUpdateArgs<ExtArgs>>): Prisma__SubmissionSnapshotClient<$Result.GetResult<Prisma.$SubmissionSnapshotPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Delete zero or more SubmissionSnapshots.
-     * @param {SubmissionSnapshotDeleteManyArgs} args - Arguments to filter SubmissionSnapshots to delete.
-     * @example
-     * // Delete a few SubmissionSnapshots
-     * const { count } = await prisma.submissionSnapshot.deleteMany({
-     *   where: {
-     *     // ... provide filter here
-     *   }
-     * })
-     * 
-     */
-    deleteMany<T extends SubmissionSnapshotDeleteManyArgs>(args?: SelectSubset<T, SubmissionSnapshotDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
-
-    /**
-     * Update zero or more SubmissionSnapshots.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {SubmissionSnapshotUpdateManyArgs} args - Arguments to update one or more rows.
-     * @example
-     * // Update many SubmissionSnapshots
-     * const submissionSnapshot = await prisma.submissionSnapshot.updateMany({
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: {
-     *     // ... provide data here
-     *   }
-     * })
-     * 
-     */
-    updateMany<T extends SubmissionSnapshotUpdateManyArgs>(args: SelectSubset<T, SubmissionSnapshotUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
-
-    /**
-     * Update zero or more SubmissionSnapshots and returns the data updated in the database.
-     * @param {SubmissionSnapshotUpdateManyAndReturnArgs} args - Arguments to update many SubmissionSnapshots.
-     * @example
-     * // Update many SubmissionSnapshots
-     * const submissionSnapshot = await prisma.submissionSnapshot.updateManyAndReturn({
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * 
-     * // Update zero or more SubmissionSnapshots and only return the `id`
-     * const submissionSnapshotWithIdOnly = await prisma.submissionSnapshot.updateManyAndReturn({
-     *   select: { id: true },
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * 
-     */
-    updateManyAndReturn<T extends SubmissionSnapshotUpdateManyAndReturnArgs>(args: SelectSubset<T, SubmissionSnapshotUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SubmissionSnapshotPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
-
-    /**
-     * Create or update one SubmissionSnapshot.
-     * @param {SubmissionSnapshotUpsertArgs} args - Arguments to update or create a SubmissionSnapshot.
-     * @example
-     * // Update or create a SubmissionSnapshot
-     * const submissionSnapshot = await prisma.submissionSnapshot.upsert({
-     *   create: {
-     *     // ... data to create a SubmissionSnapshot
-     *   },
-     *   update: {
-     *     // ... in case it already exists, update
-     *   },
-     *   where: {
-     *     // ... the filter for the SubmissionSnapshot we want to update
-     *   }
-     * })
-     */
-    upsert<T extends SubmissionSnapshotUpsertArgs>(args: SelectSubset<T, SubmissionSnapshotUpsertArgs<ExtArgs>>): Prisma__SubmissionSnapshotClient<$Result.GetResult<Prisma.$SubmissionSnapshotPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-
-    /**
-     * Count the number of SubmissionSnapshots.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {SubmissionSnapshotCountArgs} args - Arguments to filter SubmissionSnapshots to count.
-     * @example
-     * // Count the number of SubmissionSnapshots
-     * const count = await prisma.submissionSnapshot.count({
-     *   where: {
-     *     // ... the filter for the SubmissionSnapshots we want to count
-     *   }
-     * })
-    **/
-    count<T extends SubmissionSnapshotCountArgs>(
-      args?: Subset<T, SubmissionSnapshotCountArgs>,
-    ): Prisma.PrismaPromise<
-      T extends $Utils.Record<'select', any>
-        ? T['select'] extends true
-          ? number
-          : GetScalarType<T['select'], SubmissionSnapshotCountAggregateOutputType>
-        : number
-    >
-
-    /**
-     * Allows you to perform aggregations operations on a SubmissionSnapshot.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {SubmissionSnapshotAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
-     * @example
-     * // Ordered by age ascending
-     * // Where email contains prisma.io
-     * // Limited to the 10 users
-     * const aggregations = await prisma.user.aggregate({
-     *   _avg: {
-     *     age: true,
-     *   },
-     *   where: {
-     *     email: {
-     *       contains: "prisma.io",
-     *     },
-     *   },
-     *   orderBy: {
-     *     age: "asc",
-     *   },
-     *   take: 10,
-     * })
-    **/
-    aggregate<T extends SubmissionSnapshotAggregateArgs>(args: Subset<T, SubmissionSnapshotAggregateArgs>): Prisma.PrismaPromise<GetSubmissionSnapshotAggregateType<T>>
-
-    /**
-     * Group by SubmissionSnapshot.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {SubmissionSnapshotGroupByArgs} args - Group by arguments.
-     * @example
-     * // Group by city, order by createdAt, get count
-     * const result = await prisma.user.groupBy({
-     *   by: ['city', 'createdAt'],
-     *   orderBy: {
-     *     createdAt: true
-     *   },
-     *   _count: {
-     *     _all: true
-     *   },
-     * })
-     * 
-    **/
-    groupBy<
-      T extends SubmissionSnapshotGroupByArgs,
-      HasSelectOrTake extends Or<
-        Extends<'skip', Keys<T>>,
-        Extends<'take', Keys<T>>
-      >,
-      OrderByArg extends True extends HasSelectOrTake
-        ? { orderBy: SubmissionSnapshotGroupByArgs['orderBy'] }
-        : { orderBy?: SubmissionSnapshotGroupByArgs['orderBy'] },
-      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
-      ByFields extends MaybeTupleToUnion<T['by']>,
-      ByValid extends Has<ByFields, OrderFields>,
-      HavingFields extends GetHavingFields<T['having']>,
-      HavingValid extends Has<ByFields, HavingFields>,
-      ByEmpty extends T['by'] extends never[] ? True : False,
-      InputErrors extends ByEmpty extends True
-      ? `Error: "by" must not be empty.`
-      : HavingValid extends False
-      ? {
-          [P in HavingFields]: P extends ByFields
-            ? never
-            : P extends string
-            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
-            : [
-                Error,
-                'Field ',
-                P,
-                ` in "having" needs to be provided in "by"`,
-              ]
-        }[HavingFields]
-      : 'take' extends Keys<T>
-      ? 'orderBy' extends Keys<T>
-        ? ByValid extends True
-          ? {}
-          : {
-              [P in OrderFields]: P extends ByFields
-                ? never
-                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
-            }[OrderFields]
-        : 'Error: If you provide "take", you also need to provide "orderBy"'
-      : 'skip' extends Keys<T>
-      ? 'orderBy' extends Keys<T>
-        ? ByValid extends True
-          ? {}
-          : {
-              [P in OrderFields]: P extends ByFields
-                ? never
-                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
-            }[OrderFields]
-        : 'Error: If you provide "skip", you also need to provide "orderBy"'
-      : ByValid extends True
-      ? {}
-      : {
-          [P in OrderFields]: P extends ByFields
-            ? never
-            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
-        }[OrderFields]
-    >(args: SubsetIntersection<T, SubmissionSnapshotGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetSubmissionSnapshotGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
-  /**
-   * Fields of the SubmissionSnapshot model
-   */
-  readonly fields: SubmissionSnapshotFieldRefs;
-  }
-
-  /**
-   * The delegate class that acts as a "Promise-like" for SubmissionSnapshot.
-   * Why is this prefixed with `Prisma__`?
-   * Because we want to prevent naming conflicts as mentioned in
-   * https://github.com/prisma/prisma-client-js/issues/707
-   */
-  export interface Prisma__SubmissionSnapshotClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
-    readonly [Symbol.toStringTag]: "PrismaPromise"
-    submission<T extends SubmissionDefaultArgs<ExtArgs> = {}>(args?: Subset<T, SubmissionDefaultArgs<ExtArgs>>): Prisma__SubmissionClient<$Result.GetResult<Prisma.$SubmissionPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
-    /**
-     * Attaches callbacks for the resolution and/or rejection of the Promise.
-     * @param onfulfilled The callback to execute when the Promise is resolved.
-     * @param onrejected The callback to execute when the Promise is rejected.
-     * @returns A Promise for the completion of which ever callback is executed.
-     */
-    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
-    /**
-     * Attaches a callback for only the rejection of the Promise.
-     * @param onrejected The callback to execute when the Promise is rejected.
-     * @returns A Promise for the completion of the callback.
-     */
-    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
-    /**
-     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
-     * resolved value cannot be modified from the callback.
-     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
-     * @returns A Promise for the completion of the callback.
-     */
-    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
-  }
-
-
-
-
-  /**
-   * Fields of the SubmissionSnapshot model
-   */
-  interface SubmissionSnapshotFieldRefs {
-    readonly id: FieldRef<"SubmissionSnapshot", 'String'>
-    readonly submissionId: FieldRef<"SubmissionSnapshot", 'String'>
-    readonly archivePath: FieldRef<"SubmissionSnapshot", 'String'>
-    readonly commitSha: FieldRef<"SubmissionSnapshot", 'String'>
-    readonly createdAt: FieldRef<"SubmissionSnapshot", 'DateTime'>
-  }
-    
-
-  // Custom InputTypes
-  /**
-   * SubmissionSnapshot findUnique
-   */
-  export type SubmissionSnapshotFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the SubmissionSnapshot
-     */
-    select?: SubmissionSnapshotSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SubmissionSnapshot
-     */
-    omit?: SubmissionSnapshotOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: SubmissionSnapshotInclude<ExtArgs> | null
-    /**
-     * Filter, which SubmissionSnapshot to fetch.
-     */
-    where: SubmissionSnapshotWhereUniqueInput
-  }
-
-  /**
-   * SubmissionSnapshot findUniqueOrThrow
-   */
-  export type SubmissionSnapshotFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the SubmissionSnapshot
-     */
-    select?: SubmissionSnapshotSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SubmissionSnapshot
-     */
-    omit?: SubmissionSnapshotOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: SubmissionSnapshotInclude<ExtArgs> | null
-    /**
-     * Filter, which SubmissionSnapshot to fetch.
-     */
-    where: SubmissionSnapshotWhereUniqueInput
-  }
-
-  /**
-   * SubmissionSnapshot findFirst
-   */
-  export type SubmissionSnapshotFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the SubmissionSnapshot
-     */
-    select?: SubmissionSnapshotSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SubmissionSnapshot
-     */
-    omit?: SubmissionSnapshotOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: SubmissionSnapshotInclude<ExtArgs> | null
-    /**
-     * Filter, which SubmissionSnapshot to fetch.
-     */
-    where?: SubmissionSnapshotWhereInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
-     * Determine the order of SubmissionSnapshots to fetch.
-     */
-    orderBy?: SubmissionSnapshotOrderByWithRelationInput | SubmissionSnapshotOrderByWithRelationInput[]
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
-     * Sets the position for searching for SubmissionSnapshots.
-     */
-    cursor?: SubmissionSnapshotWhereUniqueInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Take `±n` SubmissionSnapshots from the position of the cursor.
-     */
-    take?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Skip the first `n` SubmissionSnapshots.
-     */
-    skip?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
-     * 
-     * Filter by unique combinations of SubmissionSnapshots.
-     */
-    distinct?: SubmissionSnapshotScalarFieldEnum | SubmissionSnapshotScalarFieldEnum[]
-  }
-
-  /**
-   * SubmissionSnapshot findFirstOrThrow
-   */
-  export type SubmissionSnapshotFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the SubmissionSnapshot
-     */
-    select?: SubmissionSnapshotSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SubmissionSnapshot
-     */
-    omit?: SubmissionSnapshotOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: SubmissionSnapshotInclude<ExtArgs> | null
-    /**
-     * Filter, which SubmissionSnapshot to fetch.
-     */
-    where?: SubmissionSnapshotWhereInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
-     * Determine the order of SubmissionSnapshots to fetch.
-     */
-    orderBy?: SubmissionSnapshotOrderByWithRelationInput | SubmissionSnapshotOrderByWithRelationInput[]
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
-     * Sets the position for searching for SubmissionSnapshots.
-     */
-    cursor?: SubmissionSnapshotWhereUniqueInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Take `±n` SubmissionSnapshots from the position of the cursor.
-     */
-    take?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Skip the first `n` SubmissionSnapshots.
-     */
-    skip?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
-     * 
-     * Filter by unique combinations of SubmissionSnapshots.
-     */
-    distinct?: SubmissionSnapshotScalarFieldEnum | SubmissionSnapshotScalarFieldEnum[]
-  }
-
-  /**
-   * SubmissionSnapshot findMany
-   */
-  export type SubmissionSnapshotFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the SubmissionSnapshot
-     */
-    select?: SubmissionSnapshotSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SubmissionSnapshot
-     */
-    omit?: SubmissionSnapshotOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: SubmissionSnapshotInclude<ExtArgs> | null
-    /**
-     * Filter, which SubmissionSnapshots to fetch.
-     */
-    where?: SubmissionSnapshotWhereInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
-     * Determine the order of SubmissionSnapshots to fetch.
-     */
-    orderBy?: SubmissionSnapshotOrderByWithRelationInput | SubmissionSnapshotOrderByWithRelationInput[]
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
-     * Sets the position for listing SubmissionSnapshots.
-     */
-    cursor?: SubmissionSnapshotWhereUniqueInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Take `±n` SubmissionSnapshots from the position of the cursor.
-     */
-    take?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Skip the first `n` SubmissionSnapshots.
-     */
-    skip?: number
-    distinct?: SubmissionSnapshotScalarFieldEnum | SubmissionSnapshotScalarFieldEnum[]
-  }
-
-  /**
-   * SubmissionSnapshot create
-   */
-  export type SubmissionSnapshotCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the SubmissionSnapshot
-     */
-    select?: SubmissionSnapshotSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SubmissionSnapshot
-     */
-    omit?: SubmissionSnapshotOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: SubmissionSnapshotInclude<ExtArgs> | null
-    /**
-     * The data needed to create a SubmissionSnapshot.
-     */
-    data: XOR<SubmissionSnapshotCreateInput, SubmissionSnapshotUncheckedCreateInput>
-  }
-
-  /**
-   * SubmissionSnapshot createMany
-   */
-  export type SubmissionSnapshotCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * The data used to create many SubmissionSnapshots.
-     */
-    data: SubmissionSnapshotCreateManyInput | SubmissionSnapshotCreateManyInput[]
-    skipDuplicates?: boolean
-  }
-
-  /**
-   * SubmissionSnapshot createManyAndReturn
-   */
-  export type SubmissionSnapshotCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the SubmissionSnapshot
-     */
-    select?: SubmissionSnapshotSelectCreateManyAndReturn<ExtArgs> | null
-    /**
-     * Omit specific fields from the SubmissionSnapshot
-     */
-    omit?: SubmissionSnapshotOmit<ExtArgs> | null
-    /**
-     * The data used to create many SubmissionSnapshots.
-     */
-    data: SubmissionSnapshotCreateManyInput | SubmissionSnapshotCreateManyInput[]
-    skipDuplicates?: boolean
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: SubmissionSnapshotIncludeCreateManyAndReturn<ExtArgs> | null
-  }
-
-  /**
-   * SubmissionSnapshot update
-   */
-  export type SubmissionSnapshotUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the SubmissionSnapshot
-     */
-    select?: SubmissionSnapshotSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SubmissionSnapshot
-     */
-    omit?: SubmissionSnapshotOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: SubmissionSnapshotInclude<ExtArgs> | null
-    /**
-     * The data needed to update a SubmissionSnapshot.
-     */
-    data: XOR<SubmissionSnapshotUpdateInput, SubmissionSnapshotUncheckedUpdateInput>
-    /**
-     * Choose, which SubmissionSnapshot to update.
-     */
-    where: SubmissionSnapshotWhereUniqueInput
-  }
-
-  /**
-   * SubmissionSnapshot updateMany
-   */
-  export type SubmissionSnapshotUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * The data used to update SubmissionSnapshots.
-     */
-    data: XOR<SubmissionSnapshotUpdateManyMutationInput, SubmissionSnapshotUncheckedUpdateManyInput>
-    /**
-     * Filter which SubmissionSnapshots to update
-     */
-    where?: SubmissionSnapshotWhereInput
-    /**
-     * Limit how many SubmissionSnapshots to update.
-     */
-    limit?: number
-  }
-
-  /**
-   * SubmissionSnapshot updateManyAndReturn
-   */
-  export type SubmissionSnapshotUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the SubmissionSnapshot
-     */
-    select?: SubmissionSnapshotSelectUpdateManyAndReturn<ExtArgs> | null
-    /**
-     * Omit specific fields from the SubmissionSnapshot
-     */
-    omit?: SubmissionSnapshotOmit<ExtArgs> | null
-    /**
-     * The data used to update SubmissionSnapshots.
-     */
-    data: XOR<SubmissionSnapshotUpdateManyMutationInput, SubmissionSnapshotUncheckedUpdateManyInput>
-    /**
-     * Filter which SubmissionSnapshots to update
-     */
-    where?: SubmissionSnapshotWhereInput
-    /**
-     * Limit how many SubmissionSnapshots to update.
-     */
-    limit?: number
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: SubmissionSnapshotIncludeUpdateManyAndReturn<ExtArgs> | null
-  }
-
-  /**
-   * SubmissionSnapshot upsert
-   */
-  export type SubmissionSnapshotUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the SubmissionSnapshot
-     */
-    select?: SubmissionSnapshotSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SubmissionSnapshot
-     */
-    omit?: SubmissionSnapshotOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: SubmissionSnapshotInclude<ExtArgs> | null
-    /**
-     * The filter to search for the SubmissionSnapshot to update in case it exists.
-     */
-    where: SubmissionSnapshotWhereUniqueInput
-    /**
-     * In case the SubmissionSnapshot found by the `where` argument doesn't exist, create a new SubmissionSnapshot with this data.
-     */
-    create: XOR<SubmissionSnapshotCreateInput, SubmissionSnapshotUncheckedCreateInput>
-    /**
-     * In case the SubmissionSnapshot was found with the provided `where` argument, update it with this data.
-     */
-    update: XOR<SubmissionSnapshotUpdateInput, SubmissionSnapshotUncheckedUpdateInput>
-  }
-
-  /**
-   * SubmissionSnapshot delete
-   */
-  export type SubmissionSnapshotDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the SubmissionSnapshot
-     */
-    select?: SubmissionSnapshotSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SubmissionSnapshot
-     */
-    omit?: SubmissionSnapshotOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: SubmissionSnapshotInclude<ExtArgs> | null
-    /**
-     * Filter which SubmissionSnapshot to delete.
-     */
-    where: SubmissionSnapshotWhereUniqueInput
-  }
-
-  /**
-   * SubmissionSnapshot deleteMany
-   */
-  export type SubmissionSnapshotDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Filter which SubmissionSnapshots to delete
-     */
-    where?: SubmissionSnapshotWhereInput
-    /**
-     * Limit how many SubmissionSnapshots to delete.
-     */
-    limit?: number
-  }
-
-  /**
-   * SubmissionSnapshot without action
-   */
-  export type SubmissionSnapshotDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the SubmissionSnapshot
-     */
-    select?: SubmissionSnapshotSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SubmissionSnapshot
-     */
-    omit?: SubmissionSnapshotOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: SubmissionSnapshotInclude<ExtArgs> | null
   }
 
 
@@ -14713,10 +13541,10 @@ export namespace Prisma {
     updatedAt: 'updatedAt',
     status: 'status',
     result: 'result',
+    feedback: 'feedback',
     testId: 'testId',
     userId: 'userId',
-    aiScore: 'aiScore',
-    feedback: 'feedback'
+    aiScore: 'aiScore'
   };
 
   export type SubmissionScalarFieldEnum = (typeof SubmissionScalarFieldEnum)[keyof typeof SubmissionScalarFieldEnum]
@@ -14730,22 +13558,11 @@ export namespace Prisma {
     pusher: 'pusher',
     eventType: 'eventType',
     receivedAt: 'receivedAt',
-    testId: 'testId',
-    candidateId: 'candidateId'
+    candidateId: 'candidateId',
+    testId: 'testId'
   };
 
   export type SubmissionEventScalarFieldEnum = (typeof SubmissionEventScalarFieldEnum)[keyof typeof SubmissionEventScalarFieldEnum]
-
-
-  export const SubmissionSnapshotScalarFieldEnum: {
-    id: 'id',
-    submissionId: 'submissionId',
-    archivePath: 'archivePath',
-    commitSha: 'commitSha',
-    createdAt: 'createdAt'
-  };
-
-  export type SubmissionSnapshotScalarFieldEnum = (typeof SubmissionSnapshotScalarFieldEnum)[keyof typeof SubmissionSnapshotScalarFieldEnum]
 
 
   export const SortOrder: {
@@ -15488,13 +14305,12 @@ export namespace Prisma {
     updatedAt?: DateTimeFilter<"Submission"> | Date | string
     status?: StringFilter<"Submission"> | string
     result?: JsonNullableFilter<"Submission">
+    feedback?: JsonNullableFilter<"Submission">
     testId?: StringFilter<"Submission"> | string
     userId?: StringNullableFilter<"Submission"> | string | null
     aiScore?: FloatNullableFilter<"Submission"> | number | null
-    feedback?: JsonNullableFilter<"Submission">
     test?: XOR<TestScalarRelationFilter, TestWhereInput>
     user?: XOR<UserNullableScalarRelationFilter, UserWhereInput> | null
-    snapshot?: XOR<SubmissionSnapshotNullableScalarRelationFilter, SubmissionSnapshotWhereInput> | null
   }
 
   export type SubmissionOrderByWithRelationInput = {
@@ -15503,13 +14319,12 @@ export namespace Prisma {
     updatedAt?: SortOrder
     status?: SortOrder
     result?: SortOrderInput | SortOrder
+    feedback?: SortOrderInput | SortOrder
     testId?: SortOrder
     userId?: SortOrderInput | SortOrder
     aiScore?: SortOrderInput | SortOrder
-    feedback?: SortOrderInput | SortOrder
     test?: TestOrderByWithRelationInput
     user?: UserOrderByWithRelationInput
-    snapshot?: SubmissionSnapshotOrderByWithRelationInput
   }
 
   export type SubmissionWhereUniqueInput = Prisma.AtLeast<{
@@ -15521,13 +14336,12 @@ export namespace Prisma {
     updatedAt?: DateTimeFilter<"Submission"> | Date | string
     status?: StringFilter<"Submission"> | string
     result?: JsonNullableFilter<"Submission">
+    feedback?: JsonNullableFilter<"Submission">
     testId?: StringFilter<"Submission"> | string
     userId?: StringNullableFilter<"Submission"> | string | null
     aiScore?: FloatNullableFilter<"Submission"> | number | null
-    feedback?: JsonNullableFilter<"Submission">
     test?: XOR<TestScalarRelationFilter, TestWhereInput>
     user?: XOR<UserNullableScalarRelationFilter, UserWhereInput> | null
-    snapshot?: XOR<SubmissionSnapshotNullableScalarRelationFilter, SubmissionSnapshotWhereInput> | null
   }, "id">
 
   export type SubmissionOrderByWithAggregationInput = {
@@ -15536,10 +14350,10 @@ export namespace Prisma {
     updatedAt?: SortOrder
     status?: SortOrder
     result?: SortOrderInput | SortOrder
+    feedback?: SortOrderInput | SortOrder
     testId?: SortOrder
     userId?: SortOrderInput | SortOrder
     aiScore?: SortOrderInput | SortOrder
-    feedback?: SortOrderInput | SortOrder
     _count?: SubmissionCountOrderByAggregateInput
     _avg?: SubmissionAvgOrderByAggregateInput
     _max?: SubmissionMaxOrderByAggregateInput
@@ -15556,10 +14370,10 @@ export namespace Prisma {
     updatedAt?: DateTimeWithAggregatesFilter<"Submission"> | Date | string
     status?: StringWithAggregatesFilter<"Submission"> | string
     result?: JsonNullableWithAggregatesFilter<"Submission">
+    feedback?: JsonNullableWithAggregatesFilter<"Submission">
     testId?: StringWithAggregatesFilter<"Submission"> | string
     userId?: StringNullableWithAggregatesFilter<"Submission"> | string | null
     aiScore?: FloatNullableWithAggregatesFilter<"Submission"> | number | null
-    feedback?: JsonNullableWithAggregatesFilter<"Submission">
   }
 
   export type SubmissionEventWhereInput = {
@@ -15573,10 +14387,10 @@ export namespace Prisma {
     pusher?: StringFilter<"SubmissionEvent"> | string
     eventType?: StringFilter<"SubmissionEvent"> | string
     receivedAt?: DateTimeFilter<"SubmissionEvent"> | Date | string
-    testId?: StringNullableFilter<"SubmissionEvent"> | string | null
     candidateId?: StringNullableFilter<"SubmissionEvent"> | string | null
-    test?: XOR<TestNullableScalarRelationFilter, TestWhereInput> | null
+    testId?: StringNullableFilter<"SubmissionEvent"> | string | null
     candidate?: XOR<CandidateNullableScalarRelationFilter, CandidateWhereInput> | null
+    test?: XOR<TestNullableScalarRelationFilter, TestWhereInput> | null
   }
 
   export type SubmissionEventOrderByWithRelationInput = {
@@ -15587,10 +14401,10 @@ export namespace Prisma {
     pusher?: SortOrder
     eventType?: SortOrder
     receivedAt?: SortOrder
-    testId?: SortOrderInput | SortOrder
     candidateId?: SortOrderInput | SortOrder
-    test?: TestOrderByWithRelationInput
+    testId?: SortOrderInput | SortOrder
     candidate?: CandidateOrderByWithRelationInput
+    test?: TestOrderByWithRelationInput
   }
 
   export type SubmissionEventWhereUniqueInput = Prisma.AtLeast<{
@@ -15604,10 +14418,10 @@ export namespace Prisma {
     pusher?: StringFilter<"SubmissionEvent"> | string
     eventType?: StringFilter<"SubmissionEvent"> | string
     receivedAt?: DateTimeFilter<"SubmissionEvent"> | Date | string
-    testId?: StringNullableFilter<"SubmissionEvent"> | string | null
     candidateId?: StringNullableFilter<"SubmissionEvent"> | string | null
-    test?: XOR<TestNullableScalarRelationFilter, TestWhereInput> | null
+    testId?: StringNullableFilter<"SubmissionEvent"> | string | null
     candidate?: XOR<CandidateNullableScalarRelationFilter, CandidateWhereInput> | null
+    test?: XOR<TestNullableScalarRelationFilter, TestWhereInput> | null
   }, "id">
 
   export type SubmissionEventOrderByWithAggregationInput = {
@@ -15618,8 +14432,8 @@ export namespace Prisma {
     pusher?: SortOrder
     eventType?: SortOrder
     receivedAt?: SortOrder
-    testId?: SortOrderInput | SortOrder
     candidateId?: SortOrderInput | SortOrder
+    testId?: SortOrderInput | SortOrder
     _count?: SubmissionEventCountOrderByAggregateInput
     _max?: SubmissionEventMaxOrderByAggregateInput
     _min?: SubmissionEventMinOrderByAggregateInput
@@ -15636,63 +14450,8 @@ export namespace Prisma {
     pusher?: StringWithAggregatesFilter<"SubmissionEvent"> | string
     eventType?: StringWithAggregatesFilter<"SubmissionEvent"> | string
     receivedAt?: DateTimeWithAggregatesFilter<"SubmissionEvent"> | Date | string
-    testId?: StringNullableWithAggregatesFilter<"SubmissionEvent"> | string | null
     candidateId?: StringNullableWithAggregatesFilter<"SubmissionEvent"> | string | null
-  }
-
-  export type SubmissionSnapshotWhereInput = {
-    AND?: SubmissionSnapshotWhereInput | SubmissionSnapshotWhereInput[]
-    OR?: SubmissionSnapshotWhereInput[]
-    NOT?: SubmissionSnapshotWhereInput | SubmissionSnapshotWhereInput[]
-    id?: StringFilter<"SubmissionSnapshot"> | string
-    submissionId?: StringFilter<"SubmissionSnapshot"> | string
-    archivePath?: StringFilter<"SubmissionSnapshot"> | string
-    commitSha?: StringFilter<"SubmissionSnapshot"> | string
-    createdAt?: DateTimeFilter<"SubmissionSnapshot"> | Date | string
-    submission?: XOR<SubmissionScalarRelationFilter, SubmissionWhereInput>
-  }
-
-  export type SubmissionSnapshotOrderByWithRelationInput = {
-    id?: SortOrder
-    submissionId?: SortOrder
-    archivePath?: SortOrder
-    commitSha?: SortOrder
-    createdAt?: SortOrder
-    submission?: SubmissionOrderByWithRelationInput
-  }
-
-  export type SubmissionSnapshotWhereUniqueInput = Prisma.AtLeast<{
-    id?: string
-    submissionId?: string
-    AND?: SubmissionSnapshotWhereInput | SubmissionSnapshotWhereInput[]
-    OR?: SubmissionSnapshotWhereInput[]
-    NOT?: SubmissionSnapshotWhereInput | SubmissionSnapshotWhereInput[]
-    archivePath?: StringFilter<"SubmissionSnapshot"> | string
-    commitSha?: StringFilter<"SubmissionSnapshot"> | string
-    createdAt?: DateTimeFilter<"SubmissionSnapshot"> | Date | string
-    submission?: XOR<SubmissionScalarRelationFilter, SubmissionWhereInput>
-  }, "id" | "submissionId">
-
-  export type SubmissionSnapshotOrderByWithAggregationInput = {
-    id?: SortOrder
-    submissionId?: SortOrder
-    archivePath?: SortOrder
-    commitSha?: SortOrder
-    createdAt?: SortOrder
-    _count?: SubmissionSnapshotCountOrderByAggregateInput
-    _max?: SubmissionSnapshotMaxOrderByAggregateInput
-    _min?: SubmissionSnapshotMinOrderByAggregateInput
-  }
-
-  export type SubmissionSnapshotScalarWhereWithAggregatesInput = {
-    AND?: SubmissionSnapshotScalarWhereWithAggregatesInput | SubmissionSnapshotScalarWhereWithAggregatesInput[]
-    OR?: SubmissionSnapshotScalarWhereWithAggregatesInput[]
-    NOT?: SubmissionSnapshotScalarWhereWithAggregatesInput | SubmissionSnapshotScalarWhereWithAggregatesInput[]
-    id?: StringWithAggregatesFilter<"SubmissionSnapshot"> | string
-    submissionId?: StringWithAggregatesFilter<"SubmissionSnapshot"> | string
-    archivePath?: StringWithAggregatesFilter<"SubmissionSnapshot"> | string
-    commitSha?: StringWithAggregatesFilter<"SubmissionSnapshot"> | string
-    createdAt?: DateTimeWithAggregatesFilter<"SubmissionSnapshot"> | Date | string
+    testId?: StringNullableWithAggregatesFilter<"SubmissionEvent"> | string | null
   }
 
   export type UserCreateInput = {
@@ -16333,11 +15092,10 @@ export namespace Prisma {
     updatedAt?: Date | string
     status: string
     result?: NullableJsonNullValueInput | InputJsonValue
-    aiScore?: number | null
     feedback?: NullableJsonNullValueInput | InputJsonValue
+    aiScore?: number | null
     test: TestCreateNestedOneWithoutSubmissionsInput
     user?: UserCreateNestedOneWithoutSubmissionsInput
-    snapshot?: SubmissionSnapshotCreateNestedOneWithoutSubmissionInput
   }
 
   export type SubmissionUncheckedCreateInput = {
@@ -16346,11 +15104,10 @@ export namespace Prisma {
     updatedAt?: Date | string
     status: string
     result?: NullableJsonNullValueInput | InputJsonValue
+    feedback?: NullableJsonNullValueInput | InputJsonValue
     testId: string
     userId?: string | null
     aiScore?: number | null
-    feedback?: NullableJsonNullValueInput | InputJsonValue
-    snapshot?: SubmissionSnapshotUncheckedCreateNestedOneWithoutSubmissionInput
   }
 
   export type SubmissionUpdateInput = {
@@ -16359,11 +15116,10 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     status?: StringFieldUpdateOperationsInput | string
     result?: NullableJsonNullValueInput | InputJsonValue
-    aiScore?: NullableFloatFieldUpdateOperationsInput | number | null
     feedback?: NullableJsonNullValueInput | InputJsonValue
+    aiScore?: NullableFloatFieldUpdateOperationsInput | number | null
     test?: TestUpdateOneRequiredWithoutSubmissionsNestedInput
     user?: UserUpdateOneWithoutSubmissionsNestedInput
-    snapshot?: SubmissionSnapshotUpdateOneWithoutSubmissionNestedInput
   }
 
   export type SubmissionUncheckedUpdateInput = {
@@ -16372,11 +15128,10 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     status?: StringFieldUpdateOperationsInput | string
     result?: NullableJsonNullValueInput | InputJsonValue
+    feedback?: NullableJsonNullValueInput | InputJsonValue
     testId?: StringFieldUpdateOperationsInput | string
     userId?: NullableStringFieldUpdateOperationsInput | string | null
     aiScore?: NullableFloatFieldUpdateOperationsInput | number | null
-    feedback?: NullableJsonNullValueInput | InputJsonValue
-    snapshot?: SubmissionSnapshotUncheckedUpdateOneWithoutSubmissionNestedInput
   }
 
   export type SubmissionCreateManyInput = {
@@ -16385,10 +15140,10 @@ export namespace Prisma {
     updatedAt?: Date | string
     status: string
     result?: NullableJsonNullValueInput | InputJsonValue
+    feedback?: NullableJsonNullValueInput | InputJsonValue
     testId: string
     userId?: string | null
     aiScore?: number | null
-    feedback?: NullableJsonNullValueInput | InputJsonValue
   }
 
   export type SubmissionUpdateManyMutationInput = {
@@ -16397,8 +15152,8 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     status?: StringFieldUpdateOperationsInput | string
     result?: NullableJsonNullValueInput | InputJsonValue
-    aiScore?: NullableFloatFieldUpdateOperationsInput | number | null
     feedback?: NullableJsonNullValueInput | InputJsonValue
+    aiScore?: NullableFloatFieldUpdateOperationsInput | number | null
   }
 
   export type SubmissionUncheckedUpdateManyInput = {
@@ -16407,10 +15162,10 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     status?: StringFieldUpdateOperationsInput | string
     result?: NullableJsonNullValueInput | InputJsonValue
+    feedback?: NullableJsonNullValueInput | InputJsonValue
     testId?: StringFieldUpdateOperationsInput | string
     userId?: NullableStringFieldUpdateOperationsInput | string | null
     aiScore?: NullableFloatFieldUpdateOperationsInput | number | null
-    feedback?: NullableJsonNullValueInput | InputJsonValue
   }
 
   export type SubmissionEventCreateInput = {
@@ -16421,8 +15176,8 @@ export namespace Prisma {
     pusher: string
     eventType: string
     receivedAt?: Date | string
-    test?: TestCreateNestedOneWithoutSubmissionEventsInput
     candidate?: CandidateCreateNestedOneWithoutSubmissionEventsInput
+    test?: TestCreateNestedOneWithoutSubmissionEventsInput
   }
 
   export type SubmissionEventUncheckedCreateInput = {
@@ -16433,8 +15188,8 @@ export namespace Prisma {
     pusher: string
     eventType: string
     receivedAt?: Date | string
-    testId?: string | null
     candidateId?: string | null
+    testId?: string | null
   }
 
   export type SubmissionEventUpdateInput = {
@@ -16445,8 +15200,8 @@ export namespace Prisma {
     pusher?: StringFieldUpdateOperationsInput | string
     eventType?: StringFieldUpdateOperationsInput | string
     receivedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    test?: TestUpdateOneWithoutSubmissionEventsNestedInput
     candidate?: CandidateUpdateOneWithoutSubmissionEventsNestedInput
+    test?: TestUpdateOneWithoutSubmissionEventsNestedInput
   }
 
   export type SubmissionEventUncheckedUpdateInput = {
@@ -16457,8 +15212,8 @@ export namespace Prisma {
     pusher?: StringFieldUpdateOperationsInput | string
     eventType?: StringFieldUpdateOperationsInput | string
     receivedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    testId?: NullableStringFieldUpdateOperationsInput | string | null
     candidateId?: NullableStringFieldUpdateOperationsInput | string | null
+    testId?: NullableStringFieldUpdateOperationsInput | string | null
   }
 
   export type SubmissionEventCreateManyInput = {
@@ -16469,8 +15224,8 @@ export namespace Prisma {
     pusher: string
     eventType: string
     receivedAt?: Date | string
-    testId?: string | null
     candidateId?: string | null
+    testId?: string | null
   }
 
   export type SubmissionEventUpdateManyMutationInput = {
@@ -16491,63 +15246,8 @@ export namespace Prisma {
     pusher?: StringFieldUpdateOperationsInput | string
     eventType?: StringFieldUpdateOperationsInput | string
     receivedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    testId?: NullableStringFieldUpdateOperationsInput | string | null
     candidateId?: NullableStringFieldUpdateOperationsInput | string | null
-  }
-
-  export type SubmissionSnapshotCreateInput = {
-    id?: string
-    archivePath: string
-    commitSha: string
-    createdAt?: Date | string
-    submission: SubmissionCreateNestedOneWithoutSnapshotInput
-  }
-
-  export type SubmissionSnapshotUncheckedCreateInput = {
-    id?: string
-    submissionId: string
-    archivePath: string
-    commitSha: string
-    createdAt?: Date | string
-  }
-
-  export type SubmissionSnapshotUpdateInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    archivePath?: StringFieldUpdateOperationsInput | string
-    commitSha?: StringFieldUpdateOperationsInput | string
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    submission?: SubmissionUpdateOneRequiredWithoutSnapshotNestedInput
-  }
-
-  export type SubmissionSnapshotUncheckedUpdateInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    submissionId?: StringFieldUpdateOperationsInput | string
-    archivePath?: StringFieldUpdateOperationsInput | string
-    commitSha?: StringFieldUpdateOperationsInput | string
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-  }
-
-  export type SubmissionSnapshotCreateManyInput = {
-    id?: string
-    submissionId: string
-    archivePath: string
-    commitSha: string
-    createdAt?: Date | string
-  }
-
-  export type SubmissionSnapshotUpdateManyMutationInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    archivePath?: StringFieldUpdateOperationsInput | string
-    commitSha?: StringFieldUpdateOperationsInput | string
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-  }
-
-  export type SubmissionSnapshotUncheckedUpdateManyInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    submissionId?: StringFieldUpdateOperationsInput | string
-    archivePath?: StringFieldUpdateOperationsInput | string
-    commitSha?: StringFieldUpdateOperationsInput | string
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    testId?: NullableStringFieldUpdateOperationsInput | string | null
   }
 
   export type StringFilter<$PrismaModel = never> = {
@@ -17279,21 +15979,16 @@ export namespace Prisma {
     isNot?: UserWhereInput | null
   }
 
-  export type SubmissionSnapshotNullableScalarRelationFilter = {
-    is?: SubmissionSnapshotWhereInput | null
-    isNot?: SubmissionSnapshotWhereInput | null
-  }
-
   export type SubmissionCountOrderByAggregateInput = {
     id?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     status?: SortOrder
     result?: SortOrder
+    feedback?: SortOrder
     testId?: SortOrder
     userId?: SortOrder
     aiScore?: SortOrder
-    feedback?: SortOrder
   }
 
   export type SubmissionAvgOrderByAggregateInput = {
@@ -17337,8 +16032,8 @@ export namespace Prisma {
     pusher?: SortOrder
     eventType?: SortOrder
     receivedAt?: SortOrder
-    testId?: SortOrder
     candidateId?: SortOrder
+    testId?: SortOrder
   }
 
   export type SubmissionEventMaxOrderByAggregateInput = {
@@ -17349,8 +16044,8 @@ export namespace Prisma {
     pusher?: SortOrder
     eventType?: SortOrder
     receivedAt?: SortOrder
-    testId?: SortOrder
     candidateId?: SortOrder
+    testId?: SortOrder
   }
 
   export type SubmissionEventMinOrderByAggregateInput = {
@@ -17361,37 +16056,8 @@ export namespace Prisma {
     pusher?: SortOrder
     eventType?: SortOrder
     receivedAt?: SortOrder
-    testId?: SortOrder
     candidateId?: SortOrder
-  }
-
-  export type SubmissionScalarRelationFilter = {
-    is?: SubmissionWhereInput
-    isNot?: SubmissionWhereInput
-  }
-
-  export type SubmissionSnapshotCountOrderByAggregateInput = {
-    id?: SortOrder
-    submissionId?: SortOrder
-    archivePath?: SortOrder
-    commitSha?: SortOrder
-    createdAt?: SortOrder
-  }
-
-  export type SubmissionSnapshotMaxOrderByAggregateInput = {
-    id?: SortOrder
-    submissionId?: SortOrder
-    archivePath?: SortOrder
-    commitSha?: SortOrder
-    createdAt?: SortOrder
-  }
-
-  export type SubmissionSnapshotMinOrderByAggregateInput = {
-    id?: SortOrder
-    submissionId?: SortOrder
-    archivePath?: SortOrder
-    commitSha?: SortOrder
-    createdAt?: SortOrder
+    testId?: SortOrder
   }
 
   export type CompanyCreateNestedOneWithoutUsersInput = {
@@ -18015,18 +16681,6 @@ export namespace Prisma {
     connect?: UserWhereUniqueInput
   }
 
-  export type SubmissionSnapshotCreateNestedOneWithoutSubmissionInput = {
-    create?: XOR<SubmissionSnapshotCreateWithoutSubmissionInput, SubmissionSnapshotUncheckedCreateWithoutSubmissionInput>
-    connectOrCreate?: SubmissionSnapshotCreateOrConnectWithoutSubmissionInput
-    connect?: SubmissionSnapshotWhereUniqueInput
-  }
-
-  export type SubmissionSnapshotUncheckedCreateNestedOneWithoutSubmissionInput = {
-    create?: XOR<SubmissionSnapshotCreateWithoutSubmissionInput, SubmissionSnapshotUncheckedCreateWithoutSubmissionInput>
-    connectOrCreate?: SubmissionSnapshotCreateOrConnectWithoutSubmissionInput
-    connect?: SubmissionSnapshotWhereUniqueInput
-  }
-
   export type TestUpdateOneRequiredWithoutSubmissionsNestedInput = {
     create?: XOR<TestCreateWithoutSubmissionsInput, TestUncheckedCreateWithoutSubmissionsInput>
     connectOrCreate?: TestCreateOrConnectWithoutSubmissionsInput
@@ -18045,46 +16699,16 @@ export namespace Prisma {
     update?: XOR<XOR<UserUpdateToOneWithWhereWithoutSubmissionsInput, UserUpdateWithoutSubmissionsInput>, UserUncheckedUpdateWithoutSubmissionsInput>
   }
 
-  export type SubmissionSnapshotUpdateOneWithoutSubmissionNestedInput = {
-    create?: XOR<SubmissionSnapshotCreateWithoutSubmissionInput, SubmissionSnapshotUncheckedCreateWithoutSubmissionInput>
-    connectOrCreate?: SubmissionSnapshotCreateOrConnectWithoutSubmissionInput
-    upsert?: SubmissionSnapshotUpsertWithoutSubmissionInput
-    disconnect?: SubmissionSnapshotWhereInput | boolean
-    delete?: SubmissionSnapshotWhereInput | boolean
-    connect?: SubmissionSnapshotWhereUniqueInput
-    update?: XOR<XOR<SubmissionSnapshotUpdateToOneWithWhereWithoutSubmissionInput, SubmissionSnapshotUpdateWithoutSubmissionInput>, SubmissionSnapshotUncheckedUpdateWithoutSubmissionInput>
-  }
-
-  export type SubmissionSnapshotUncheckedUpdateOneWithoutSubmissionNestedInput = {
-    create?: XOR<SubmissionSnapshotCreateWithoutSubmissionInput, SubmissionSnapshotUncheckedCreateWithoutSubmissionInput>
-    connectOrCreate?: SubmissionSnapshotCreateOrConnectWithoutSubmissionInput
-    upsert?: SubmissionSnapshotUpsertWithoutSubmissionInput
-    disconnect?: SubmissionSnapshotWhereInput | boolean
-    delete?: SubmissionSnapshotWhereInput | boolean
-    connect?: SubmissionSnapshotWhereUniqueInput
-    update?: XOR<XOR<SubmissionSnapshotUpdateToOneWithWhereWithoutSubmissionInput, SubmissionSnapshotUpdateWithoutSubmissionInput>, SubmissionSnapshotUncheckedUpdateWithoutSubmissionInput>
-  }
-
-  export type TestCreateNestedOneWithoutSubmissionEventsInput = {
-    create?: XOR<TestCreateWithoutSubmissionEventsInput, TestUncheckedCreateWithoutSubmissionEventsInput>
-    connectOrCreate?: TestCreateOrConnectWithoutSubmissionEventsInput
-    connect?: TestWhereUniqueInput
-  }
-
   export type CandidateCreateNestedOneWithoutSubmissionEventsInput = {
     create?: XOR<CandidateCreateWithoutSubmissionEventsInput, CandidateUncheckedCreateWithoutSubmissionEventsInput>
     connectOrCreate?: CandidateCreateOrConnectWithoutSubmissionEventsInput
     connect?: CandidateWhereUniqueInput
   }
 
-  export type TestUpdateOneWithoutSubmissionEventsNestedInput = {
+  export type TestCreateNestedOneWithoutSubmissionEventsInput = {
     create?: XOR<TestCreateWithoutSubmissionEventsInput, TestUncheckedCreateWithoutSubmissionEventsInput>
     connectOrCreate?: TestCreateOrConnectWithoutSubmissionEventsInput
-    upsert?: TestUpsertWithoutSubmissionEventsInput
-    disconnect?: TestWhereInput | boolean
-    delete?: TestWhereInput | boolean
     connect?: TestWhereUniqueInput
-    update?: XOR<XOR<TestUpdateToOneWithWhereWithoutSubmissionEventsInput, TestUpdateWithoutSubmissionEventsInput>, TestUncheckedUpdateWithoutSubmissionEventsInput>
   }
 
   export type CandidateUpdateOneWithoutSubmissionEventsNestedInput = {
@@ -18097,18 +16721,14 @@ export namespace Prisma {
     update?: XOR<XOR<CandidateUpdateToOneWithWhereWithoutSubmissionEventsInput, CandidateUpdateWithoutSubmissionEventsInput>, CandidateUncheckedUpdateWithoutSubmissionEventsInput>
   }
 
-  export type SubmissionCreateNestedOneWithoutSnapshotInput = {
-    create?: XOR<SubmissionCreateWithoutSnapshotInput, SubmissionUncheckedCreateWithoutSnapshotInput>
-    connectOrCreate?: SubmissionCreateOrConnectWithoutSnapshotInput
-    connect?: SubmissionWhereUniqueInput
-  }
-
-  export type SubmissionUpdateOneRequiredWithoutSnapshotNestedInput = {
-    create?: XOR<SubmissionCreateWithoutSnapshotInput, SubmissionUncheckedCreateWithoutSnapshotInput>
-    connectOrCreate?: SubmissionCreateOrConnectWithoutSnapshotInput
-    upsert?: SubmissionUpsertWithoutSnapshotInput
-    connect?: SubmissionWhereUniqueInput
-    update?: XOR<XOR<SubmissionUpdateToOneWithWhereWithoutSnapshotInput, SubmissionUpdateWithoutSnapshotInput>, SubmissionUncheckedUpdateWithoutSnapshotInput>
+  export type TestUpdateOneWithoutSubmissionEventsNestedInput = {
+    create?: XOR<TestCreateWithoutSubmissionEventsInput, TestUncheckedCreateWithoutSubmissionEventsInput>
+    connectOrCreate?: TestCreateOrConnectWithoutSubmissionEventsInput
+    upsert?: TestUpsertWithoutSubmissionEventsInput
+    disconnect?: TestWhereInput | boolean
+    delete?: TestWhereInput | boolean
+    connect?: TestWhereUniqueInput
+    update?: XOR<XOR<TestUpdateToOneWithWhereWithoutSubmissionEventsInput, TestUpdateWithoutSubmissionEventsInput>, TestUncheckedUpdateWithoutSubmissionEventsInput>
   }
 
   export type NestedStringFilter<$PrismaModel = never> = {
@@ -18450,10 +17070,9 @@ export namespace Prisma {
     updatedAt?: Date | string
     status: string
     result?: NullableJsonNullValueInput | InputJsonValue
-    aiScore?: number | null
     feedback?: NullableJsonNullValueInput | InputJsonValue
+    aiScore?: number | null
     test: TestCreateNestedOneWithoutSubmissionsInput
-    snapshot?: SubmissionSnapshotCreateNestedOneWithoutSubmissionInput
   }
 
   export type SubmissionUncheckedCreateWithoutUserInput = {
@@ -18462,10 +17081,9 @@ export namespace Prisma {
     updatedAt?: Date | string
     status: string
     result?: NullableJsonNullValueInput | InputJsonValue
+    feedback?: NullableJsonNullValueInput | InputJsonValue
     testId: string
     aiScore?: number | null
-    feedback?: NullableJsonNullValueInput | InputJsonValue
-    snapshot?: SubmissionSnapshotUncheckedCreateNestedOneWithoutSubmissionInput
   }
 
   export type SubmissionCreateOrConnectWithoutUserInput = {
@@ -18556,10 +17174,10 @@ export namespace Prisma {
     updatedAt?: DateTimeFilter<"Submission"> | Date | string
     status?: StringFilter<"Submission"> | string
     result?: JsonNullableFilter<"Submission">
+    feedback?: JsonNullableFilter<"Submission">
     testId?: StringFilter<"Submission"> | string
     userId?: StringNullableFilter<"Submission"> | string | null
     aiScore?: FloatNullableFilter<"Submission"> | number | null
-    feedback?: JsonNullableFilter<"Submission">
   }
 
   export type UserCreateWithoutCompanyInput = {
@@ -19031,8 +17649,8 @@ export namespace Prisma {
     pusher?: StringFilter<"SubmissionEvent"> | string
     eventType?: StringFilter<"SubmissionEvent"> | string
     receivedAt?: DateTimeFilter<"SubmissionEvent"> | Date | string
-    testId?: StringNullableFilter<"SubmissionEvent"> | string | null
     candidateId?: StringNullableFilter<"SubmissionEvent"> | string | null
+    testId?: StringNullableFilter<"SubmissionEvent"> | string | null
   }
 
   export type CandidateCreateWithoutResumeInput = {
@@ -19176,10 +17794,9 @@ export namespace Prisma {
     updatedAt?: Date | string
     status: string
     result?: NullableJsonNullValueInput | InputJsonValue
-    aiScore?: number | null
     feedback?: NullableJsonNullValueInput | InputJsonValue
+    aiScore?: number | null
     user?: UserCreateNestedOneWithoutSubmissionsInput
-    snapshot?: SubmissionSnapshotCreateNestedOneWithoutSubmissionInput
   }
 
   export type SubmissionUncheckedCreateWithoutTestInput = {
@@ -19188,10 +17805,9 @@ export namespace Prisma {
     updatedAt?: Date | string
     status: string
     result?: NullableJsonNullValueInput | InputJsonValue
+    feedback?: NullableJsonNullValueInput | InputJsonValue
     userId?: string | null
     aiScore?: number | null
-    feedback?: NullableJsonNullValueInput | InputJsonValue
-    snapshot?: SubmissionSnapshotUncheckedCreateNestedOneWithoutSubmissionInput
   }
 
   export type SubmissionCreateOrConnectWithoutTestInput = {
@@ -19610,25 +18226,6 @@ export namespace Prisma {
     create: XOR<UserCreateWithoutSubmissionsInput, UserUncheckedCreateWithoutSubmissionsInput>
   }
 
-  export type SubmissionSnapshotCreateWithoutSubmissionInput = {
-    id?: string
-    archivePath: string
-    commitSha: string
-    createdAt?: Date | string
-  }
-
-  export type SubmissionSnapshotUncheckedCreateWithoutSubmissionInput = {
-    id?: string
-    archivePath: string
-    commitSha: string
-    createdAt?: Date | string
-  }
-
-  export type SubmissionSnapshotCreateOrConnectWithoutSubmissionInput = {
-    where: SubmissionSnapshotWhereUniqueInput
-    create: XOR<SubmissionSnapshotCreateWithoutSubmissionInput, SubmissionSnapshotUncheckedCreateWithoutSubmissionInput>
-  }
-
   export type TestUpsertWithoutSubmissionsInput = {
     update: XOR<TestUpdateWithoutSubmissionsInput, TestUncheckedUpdateWithoutSubmissionsInput>
     create: XOR<TestCreateWithoutSubmissionsInput, TestUncheckedCreateWithoutSubmissionsInput>
@@ -19711,29 +18308,31 @@ export namespace Prisma {
     jobDescriptions?: JobDescriptionUncheckedUpdateManyWithoutCreatorNestedInput
   }
 
-  export type SubmissionSnapshotUpsertWithoutSubmissionInput = {
-    update: XOR<SubmissionSnapshotUpdateWithoutSubmissionInput, SubmissionSnapshotUncheckedUpdateWithoutSubmissionInput>
-    create: XOR<SubmissionSnapshotCreateWithoutSubmissionInput, SubmissionSnapshotUncheckedCreateWithoutSubmissionInput>
-    where?: SubmissionSnapshotWhereInput
+  export type CandidateCreateWithoutSubmissionEventsInput = {
+    id?: string
+    status: string
+    suitabilityScore?: number | null
+    suitabilityAnalysis?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    jobDescription: JobDescriptionCreateNestedOneWithoutCandidatesInput
+    resume: ResumeCreateNestedOneWithoutCandidatesInput
   }
 
-  export type SubmissionSnapshotUpdateToOneWithWhereWithoutSubmissionInput = {
-    where?: SubmissionSnapshotWhereInput
-    data: XOR<SubmissionSnapshotUpdateWithoutSubmissionInput, SubmissionSnapshotUncheckedUpdateWithoutSubmissionInput>
+  export type CandidateUncheckedCreateWithoutSubmissionEventsInput = {
+    id?: string
+    status: string
+    suitabilityScore?: number | null
+    suitabilityAnalysis?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    jobDescriptionId: string
+    resumeId: string
   }
 
-  export type SubmissionSnapshotUpdateWithoutSubmissionInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    archivePath?: StringFieldUpdateOperationsInput | string
-    commitSha?: StringFieldUpdateOperationsInput | string
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-  }
-
-  export type SubmissionSnapshotUncheckedUpdateWithoutSubmissionInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    archivePath?: StringFieldUpdateOperationsInput | string
-    commitSha?: StringFieldUpdateOperationsInput | string
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  export type CandidateCreateOrConnectWithoutSubmissionEventsInput = {
+    where: CandidateWhereUniqueInput
+    create: XOR<CandidateCreateWithoutSubmissionEventsInput, CandidateUncheckedCreateWithoutSubmissionEventsInput>
   }
 
   export type TestCreateWithoutSubmissionEventsInput = {
@@ -19777,31 +18376,37 @@ export namespace Prisma {
     create: XOR<TestCreateWithoutSubmissionEventsInput, TestUncheckedCreateWithoutSubmissionEventsInput>
   }
 
-  export type CandidateCreateWithoutSubmissionEventsInput = {
-    id?: string
-    status: string
-    suitabilityScore?: number | null
-    suitabilityAnalysis?: NullableJsonNullValueInput | InputJsonValue
-    createdAt?: Date | string
-    updatedAt?: Date | string
-    jobDescription: JobDescriptionCreateNestedOneWithoutCandidatesInput
-    resume: ResumeCreateNestedOneWithoutCandidatesInput
-  }
-
-  export type CandidateUncheckedCreateWithoutSubmissionEventsInput = {
-    id?: string
-    status: string
-    suitabilityScore?: number | null
-    suitabilityAnalysis?: NullableJsonNullValueInput | InputJsonValue
-    createdAt?: Date | string
-    updatedAt?: Date | string
-    jobDescriptionId: string
-    resumeId: string
-  }
-
-  export type CandidateCreateOrConnectWithoutSubmissionEventsInput = {
-    where: CandidateWhereUniqueInput
+  export type CandidateUpsertWithoutSubmissionEventsInput = {
+    update: XOR<CandidateUpdateWithoutSubmissionEventsInput, CandidateUncheckedUpdateWithoutSubmissionEventsInput>
     create: XOR<CandidateCreateWithoutSubmissionEventsInput, CandidateUncheckedCreateWithoutSubmissionEventsInput>
+    where?: CandidateWhereInput
+  }
+
+  export type CandidateUpdateToOneWithWhereWithoutSubmissionEventsInput = {
+    where?: CandidateWhereInput
+    data: XOR<CandidateUpdateWithoutSubmissionEventsInput, CandidateUncheckedUpdateWithoutSubmissionEventsInput>
+  }
+
+  export type CandidateUpdateWithoutSubmissionEventsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    suitabilityScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    suitabilityAnalysis?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    jobDescription?: JobDescriptionUpdateOneRequiredWithoutCandidatesNestedInput
+    resume?: ResumeUpdateOneRequiredWithoutCandidatesNestedInput
+  }
+
+  export type CandidateUncheckedUpdateWithoutSubmissionEventsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    suitabilityScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    suitabilityAnalysis?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    jobDescriptionId?: StringFieldUpdateOperationsInput | string
+    resumeId?: StringFieldUpdateOperationsInput | string
   }
 
   export type TestUpsertWithoutSubmissionEventsInput = {
@@ -19851,103 +18456,6 @@ export namespace Prisma {
     submissions?: SubmissionUncheckedUpdateManyWithoutTestNestedInput
   }
 
-  export type CandidateUpsertWithoutSubmissionEventsInput = {
-    update: XOR<CandidateUpdateWithoutSubmissionEventsInput, CandidateUncheckedUpdateWithoutSubmissionEventsInput>
-    create: XOR<CandidateCreateWithoutSubmissionEventsInput, CandidateUncheckedCreateWithoutSubmissionEventsInput>
-    where?: CandidateWhereInput
-  }
-
-  export type CandidateUpdateToOneWithWhereWithoutSubmissionEventsInput = {
-    where?: CandidateWhereInput
-    data: XOR<CandidateUpdateWithoutSubmissionEventsInput, CandidateUncheckedUpdateWithoutSubmissionEventsInput>
-  }
-
-  export type CandidateUpdateWithoutSubmissionEventsInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    status?: StringFieldUpdateOperationsInput | string
-    suitabilityScore?: NullableFloatFieldUpdateOperationsInput | number | null
-    suitabilityAnalysis?: NullableJsonNullValueInput | InputJsonValue
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    jobDescription?: JobDescriptionUpdateOneRequiredWithoutCandidatesNestedInput
-    resume?: ResumeUpdateOneRequiredWithoutCandidatesNestedInput
-  }
-
-  export type CandidateUncheckedUpdateWithoutSubmissionEventsInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    status?: StringFieldUpdateOperationsInput | string
-    suitabilityScore?: NullableFloatFieldUpdateOperationsInput | number | null
-    suitabilityAnalysis?: NullableJsonNullValueInput | InputJsonValue
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    jobDescriptionId?: StringFieldUpdateOperationsInput | string
-    resumeId?: StringFieldUpdateOperationsInput | string
-  }
-
-  export type SubmissionCreateWithoutSnapshotInput = {
-    id?: string
-    createdAt?: Date | string
-    updatedAt?: Date | string
-    status: string
-    result?: NullableJsonNullValueInput | InputJsonValue
-    aiScore?: number | null
-    feedback?: NullableJsonNullValueInput | InputJsonValue
-    test: TestCreateNestedOneWithoutSubmissionsInput
-    user?: UserCreateNestedOneWithoutSubmissionsInput
-  }
-
-  export type SubmissionUncheckedCreateWithoutSnapshotInput = {
-    id?: string
-    createdAt?: Date | string
-    updatedAt?: Date | string
-    status: string
-    result?: NullableJsonNullValueInput | InputJsonValue
-    testId: string
-    userId?: string | null
-    aiScore?: number | null
-    feedback?: NullableJsonNullValueInput | InputJsonValue
-  }
-
-  export type SubmissionCreateOrConnectWithoutSnapshotInput = {
-    where: SubmissionWhereUniqueInput
-    create: XOR<SubmissionCreateWithoutSnapshotInput, SubmissionUncheckedCreateWithoutSnapshotInput>
-  }
-
-  export type SubmissionUpsertWithoutSnapshotInput = {
-    update: XOR<SubmissionUpdateWithoutSnapshotInput, SubmissionUncheckedUpdateWithoutSnapshotInput>
-    create: XOR<SubmissionCreateWithoutSnapshotInput, SubmissionUncheckedCreateWithoutSnapshotInput>
-    where?: SubmissionWhereInput
-  }
-
-  export type SubmissionUpdateToOneWithWhereWithoutSnapshotInput = {
-    where?: SubmissionWhereInput
-    data: XOR<SubmissionUpdateWithoutSnapshotInput, SubmissionUncheckedUpdateWithoutSnapshotInput>
-  }
-
-  export type SubmissionUpdateWithoutSnapshotInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    status?: StringFieldUpdateOperationsInput | string
-    result?: NullableJsonNullValueInput | InputJsonValue
-    aiScore?: NullableFloatFieldUpdateOperationsInput | number | null
-    feedback?: NullableJsonNullValueInput | InputJsonValue
-    test?: TestUpdateOneRequiredWithoutSubmissionsNestedInput
-    user?: UserUpdateOneWithoutSubmissionsNestedInput
-  }
-
-  export type SubmissionUncheckedUpdateWithoutSnapshotInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    status?: StringFieldUpdateOperationsInput | string
-    result?: NullableJsonNullValueInput | InputJsonValue
-    testId?: StringFieldUpdateOperationsInput | string
-    userId?: NullableStringFieldUpdateOperationsInput | string | null
-    aiScore?: NullableFloatFieldUpdateOperationsInput | number | null
-    feedback?: NullableJsonNullValueInput | InputJsonValue
-  }
-
   export type JobDescriptionCreateManyCreatorInput = {
     id?: string
     title: string
@@ -19966,9 +18474,9 @@ export namespace Prisma {
     updatedAt?: Date | string
     status: string
     result?: NullableJsonNullValueInput | InputJsonValue
+    feedback?: NullableJsonNullValueInput | InputJsonValue
     testId: string
     aiScore?: number | null
-    feedback?: NullableJsonNullValueInput | InputJsonValue
   }
 
   export type JobDescriptionUpdateWithoutCreatorInput = {
@@ -20017,10 +18525,9 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     status?: StringFieldUpdateOperationsInput | string
     result?: NullableJsonNullValueInput | InputJsonValue
-    aiScore?: NullableFloatFieldUpdateOperationsInput | number | null
     feedback?: NullableJsonNullValueInput | InputJsonValue
+    aiScore?: NullableFloatFieldUpdateOperationsInput | number | null
     test?: TestUpdateOneRequiredWithoutSubmissionsNestedInput
-    snapshot?: SubmissionSnapshotUpdateOneWithoutSubmissionNestedInput
   }
 
   export type SubmissionUncheckedUpdateWithoutUserInput = {
@@ -20029,10 +18536,9 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     status?: StringFieldUpdateOperationsInput | string
     result?: NullableJsonNullValueInput | InputJsonValue
+    feedback?: NullableJsonNullValueInput | InputJsonValue
     testId?: StringFieldUpdateOperationsInput | string
     aiScore?: NullableFloatFieldUpdateOperationsInput | number | null
-    feedback?: NullableJsonNullValueInput | InputJsonValue
-    snapshot?: SubmissionSnapshotUncheckedUpdateOneWithoutSubmissionNestedInput
   }
 
   export type SubmissionUncheckedUpdateManyWithoutUserInput = {
@@ -20041,9 +18547,9 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     status?: StringFieldUpdateOperationsInput | string
     result?: NullableJsonNullValueInput | InputJsonValue
+    feedback?: NullableJsonNullValueInput | InputJsonValue
     testId?: StringFieldUpdateOperationsInput | string
     aiScore?: NullableFloatFieldUpdateOperationsInput | number | null
-    feedback?: NullableJsonNullValueInput | InputJsonValue
   }
 
   export type UserCreateManyCompanyInput = {
@@ -20241,9 +18747,9 @@ export namespace Prisma {
     updatedAt?: Date | string
     status: string
     result?: NullableJsonNullValueInput | InputJsonValue
+    feedback?: NullableJsonNullValueInput | InputJsonValue
     userId?: string | null
     aiScore?: number | null
-    feedback?: NullableJsonNullValueInput | InputJsonValue
   }
 
   export type SubmissionEventCreateManyTestInput = {
@@ -20314,10 +18820,9 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     status?: StringFieldUpdateOperationsInput | string
     result?: NullableJsonNullValueInput | InputJsonValue
-    aiScore?: NullableFloatFieldUpdateOperationsInput | number | null
     feedback?: NullableJsonNullValueInput | InputJsonValue
+    aiScore?: NullableFloatFieldUpdateOperationsInput | number | null
     user?: UserUpdateOneWithoutSubmissionsNestedInput
-    snapshot?: SubmissionSnapshotUpdateOneWithoutSubmissionNestedInput
   }
 
   export type SubmissionUncheckedUpdateWithoutTestInput = {
@@ -20326,10 +18831,9 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     status?: StringFieldUpdateOperationsInput | string
     result?: NullableJsonNullValueInput | InputJsonValue
+    feedback?: NullableJsonNullValueInput | InputJsonValue
     userId?: NullableStringFieldUpdateOperationsInput | string | null
     aiScore?: NullableFloatFieldUpdateOperationsInput | number | null
-    feedback?: NullableJsonNullValueInput | InputJsonValue
-    snapshot?: SubmissionSnapshotUncheckedUpdateOneWithoutSubmissionNestedInput
   }
 
   export type SubmissionUncheckedUpdateManyWithoutTestInput = {
@@ -20338,9 +18842,9 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     status?: StringFieldUpdateOperationsInput | string
     result?: NullableJsonNullValueInput | InputJsonValue
+    feedback?: NullableJsonNullValueInput | InputJsonValue
     userId?: NullableStringFieldUpdateOperationsInput | string | null
     aiScore?: NullableFloatFieldUpdateOperationsInput | number | null
-    feedback?: NullableJsonNullValueInput | InputJsonValue
   }
 
   export type SubmissionEventUpdateWithoutTestInput = {

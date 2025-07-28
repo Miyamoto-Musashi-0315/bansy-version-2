@@ -211,10 +211,10 @@ exports.Prisma.SubmissionScalarFieldEnum = {
   updatedAt: 'updatedAt',
   status: 'status',
   result: 'result',
+  feedback: 'feedback',
   testId: 'testId',
   userId: 'userId',
-  aiScore: 'aiScore',
-  feedback: 'feedback'
+  aiScore: 'aiScore'
 };
 
 exports.Prisma.SubmissionEventScalarFieldEnum = {
@@ -225,16 +225,8 @@ exports.Prisma.SubmissionEventScalarFieldEnum = {
   pusher: 'pusher',
   eventType: 'eventType',
   receivedAt: 'receivedAt',
-  testId: 'testId',
-  candidateId: 'candidateId'
-};
-
-exports.Prisma.SubmissionSnapshotScalarFieldEnum = {
-  id: 'id',
-  submissionId: 'submissionId',
-  archivePath: 'archivePath',
-  commitSha: 'commitSha',
-  createdAt: 'createdAt'
+  candidateId: 'candidateId',
+  testId: 'testId'
 };
 
 exports.Prisma.SortOrder = {
@@ -281,8 +273,7 @@ exports.Prisma.ModelName = {
   TestCase: 'TestCase',
   TestFile: 'TestFile',
   Submission: 'Submission',
-  SubmissionEvent: 'SubmissionEvent',
-  SubmissionSnapshot: 'SubmissionSnapshot'
+  SubmissionEvent: 'SubmissionEvent'
 };
 
 /**

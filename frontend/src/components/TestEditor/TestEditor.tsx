@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Box, Button, Group, Paper, Tabs, Alert, Text, Code, Badge, ActionIcon, Tooltip } from '@mantine/core';
-import { IconCode, IconTestPipe, IconPlayerPlay, IconAlertCircle, IconDownload, IconCopy } from '@tabler/icons-react';
+import { IconCode, IconTestPipe, IconPlayerPlay, IconAlertCircle, IconDownload, IconCopy, IconUpload } from '@tabler/icons-react';
+import { testService } from '../../services/testService';
 
 interface TestCase {
   id: string;
@@ -43,6 +44,8 @@ export function TestEditor({
       }>;
     };
   } | null>(null);
+  // NEW STATE FOR SUBMITTING
+  const [submitting, setSubmitting] = useState<boolean>(false);
 
   // Handle code copy
   const handleCopyCode = async () => {
@@ -134,6 +137,40 @@ export function TestEditor({
     }
   };
   
+  // NEW: Handle final submission (uses latest commit on GitHub)
+  const submitSolution = async () => {
+    if (!testId) {
+      setTestResults({ success: false, error: 'No test ID provided' });
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const result = await testService.submitSolution(testId, {});
+      setTestResults({
+        success: result.status === 'success',
+        results: {
+          passed: result.results.filter(r => r.passed).length,
+          failed: result.results.filter(r => !r.passed).length,
+          tests: result.results.map((r, i) => ({
+            name: testCases[i]?.description || `Test ${i + 1}`,
+            passed: r.passed,
+            output: r.output || r.error || ''
+          }))
+        }
+      });
+    } catch (error) {
+      console.error('Error submitting solution:', error);
+      setTestResults({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to submit solution'
+      });
+    } finally {
+      setSubmitting(false);
+      setActiveTab('results');
+    }
+  };
+  
   return (
     <Box>
       <Group justify="space-between" mb="md">
@@ -147,6 +184,15 @@ export function TestEditor({
             Download Files
           </Button>
         </Group>
+        <Group>
+          <Button
+            leftSection={<IconUpload size={16} />}
+            color="blue"
+            onClick={submitSolution}
+            loading={submitting}
+          >
+            Submit Solution
+          </Button>
         <Button
           leftSection={<IconPlayerPlay size={16} />}
           color="green"
@@ -155,6 +201,7 @@ export function TestEditor({
         >
           Run Tests
         </Button>
+        </Group>
       </Group>
       
       <Tabs value={activeTab} onChange={(value) => value && setActiveTab(value)}>

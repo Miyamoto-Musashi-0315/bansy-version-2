@@ -3,6 +3,8 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import subprocess
 import tempfile
+from container_exec import run_in_container
+import shutil
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
@@ -221,6 +223,27 @@ def execute_legacy():
             os.remove(code_file_path)
         if 'input_file_path' in locals() and os.path.exists(input_file_path):
             os.remove(input_file_path)
+
+@app.route('/run', methods=['POST'])
+def execute_container():
+    data = request.get_json()
+    language = data.get('language')
+    repo_url = data.get('repoUrl')
+    main_file = data.get('mainFile')
+
+    if not language or not repo_url:
+        return jsonify({'passed': False, 'error': 'language and repoUrl are required'}), 400
+
+    temp_dir = tempfile.mkdtemp(prefix='repo-')
+    try:
+        # shallow clone
+        subprocess.check_output(['git','clone','--depth','1', repo_url, temp_dir], stderr=subprocess.STDOUT)
+        result = run_in_container(language, temp_dir, main_file)
+        return jsonify(result), 200 if result.get('passed') or result.get('error') else 500
+    except subprocess.CalledProcessError as e:
+        return jsonify({'passed': False, 'output': e.output.decode('utf-8', errors='ignore'), 'error': 'git clone failed'}), 500
+    finally:
+        shutil.rmtree(temp_dir, ignore_errors=True)
 
 def get_suffix(language):
     if language.lower() == 'python':

@@ -185,25 +185,116 @@ exports.testController = {
                         });
                     }
                 }
-                // Execute tests against the code in the repository
-                let passedTests = 0;
-                // Determine the main file based on language
-                const language = test.language.toLowerCase();
-                let mainFile;
-                if (language === 'python') {
-                    mainFile = 'main.py';
+                // Determine language – first from DB field, then heuristics if unclear
+                const langStr = (test.language || '').toLowerCase();
+                let language = 'python';
+                if (langStr.includes('python')) {
+                    language = 'python';
                 }
-                else if (language === 'javascript') {
-                    mainFile = 'main.js';
+                else if (langStr.includes('typescript')) {
+                    language = 'typescript';
                 }
-                else if (language === 'typescript') {
-                    mainFile = 'main.ts';
+                else if (langStr.includes('javascript') || langStr.includes('node')) {
+                    language = 'javascript';
                 }
-                else if (language === 'java') {
-                    mainFile = 'Main.java';
+                else if (langStr.includes('java')) {
+                    language = 'java';
                 }
                 else {
-                    mainFile = 'main'; // Default
+                    // Heuristic: look for key marker files
+                    if (fs.existsSync(path.join(tempDir, 'package.json'))) {
+                        language = 'javascript';
+                    }
+                    else if (fs.existsSync(path.join(tempDir, 'tsconfig.json'))) {
+                        language = 'typescript';
+                    }
+                    else if (fs.readdirSync(tempDir).some(f => f.endsWith('.py'))) {
+                        language = 'python';
+                    }
+                    else if (fs.readdirSync(tempDir).some(f => f.endsWith('.java'))) {
+                        language = 'java';
+                    }
+                }
+                console.log(`[scan] detected language for runTests: ${language}`);
+                // variable to track tests passed
+                let passedTests = 0;
+                const extGlobal = { python: '.py', javascript: '.js', typescript: '.ts', java: '.java' }[language] || '';
+                const possibleFiles = {
+                    python: ['main.py', 'app.py'],
+                    javascript: ['main.js', 'index.js'],
+                    typescript: ['main.ts', 'index.ts'],
+                    java: ['Main.java']
+                };
+                let mainFile = null;
+                for (const candidate of possibleFiles[language] || []) {
+                    if (fs.existsSync(path.join(tempDir, candidate))) {
+                        mainFile = candidate;
+                        break;
+                    }
+                }
+                if (!mainFile) {
+                    // Last resort: pick first supported language file at repo root
+                    const files = fs.readdirSync(tempDir);
+                    const fallbackExts = ['.js', '.ts', '.py', '.java'];
+                    const foundAny = files.find(f => fallbackExts.some(ext => f.endsWith(ext)));
+                    if (foundAny) {
+                        mainFile = foundAny;
+                        console.log(`[scan] fallback picked ${foundAny} at repo root`);
+                        // adjust language if mismatch
+                        if (foundAny.endsWith('.js'))
+                            language = 'javascript';
+                        else if (foundAny.endsWith('.ts'))
+                            language = 'typescript';
+                        else if (foundAny.endsWith('.py'))
+                            language = 'python';
+                        else if (foundAny.endsWith('.java'))
+                            language = 'java';
+                    }
+                }
+                // Deep scan `test` or `tests` directories
+                if (!mainFile) {
+                    const debugDirs = [];
+                    const walk = (dir) => {
+                        if (!fs.existsSync(dir))
+                            return null;
+                        debugDirs.push(dir);
+                        console.log(`[scan] visiting: ${dir}`);
+                        for (const entry of fs.readdirSync(dir)) {
+                            const full = path.join(dir, entry);
+                            const stat = fs.statSync(full);
+                            if (stat.isDirectory()) {
+                                const res = walk(full);
+                                if (res)
+                                    return res;
+                            }
+                            else if (entry.endsWith(extGlobal)) {
+                                console.log(`[scan] candidate file found: ${full}`);
+                                return path.relative(tempDir, full);
+                            }
+                            else {
+                                const fallbackExts = ['.js', '.ts', '.py', '.java'];
+                                if (fallbackExts.some(ext => entry.endsWith(ext))) {
+                                    console.log(`[scan] candidate file found (fallback ext): ${full}`);
+                                    return path.relative(tempDir, full);
+                                }
+                            }
+                        }
+                        return null;
+                    };
+                    const dirsToSearch = ['test', 'tests'];
+                    for (const d of dirsToSearch) {
+                        const foundDeep = walk(path.join(tempDir, d));
+                        if (foundDeep) {
+                            mainFile = foundDeep;
+                            break;
+                        }
+                    }
+                    if (!mainFile) {
+                        console.warn('[scan] No entry file found after scanning directories:', debugDirs);
+                    }
+                }
+                if (!mainFile) {
+                    throw new Error('Main entry file not found in repository');
                 }
                 // Check if the main file exists
                 const mainFilePath = path.join(tempDir, mainFile);
@@ -217,8 +308,9 @@ exports.testController = {
                     try {
                         // Prepare payload for execution service
                         const payload = {
-                            language: test.language,
-                            code: fs.readFileSync(mainFilePath, 'utf8'),
+                            language,
+                            repoUrl: gitRepoUrl,
+                            mainFile,
                             input: testCase.input || '',
                             testCase: {
                                 expectedOutput: testCase.expectedOutput,
@@ -227,7 +319,7 @@ exports.testController = {
                         };
                         console.log(`Executing test case ${i + 1} with payload:`, JSON.stringify(payload, null, 2));
                         // Execute the code using the execution service
-                        const executionResponse = await axios_1.default.post(`${config_1.config.executionServiceUrl}/execute`, payload);
+                        const executionResponse = await axios_1.default.post(`${config_1.config.executionServiceUrl}/run`, payload);
                         const result = executionResponse.data;
                         console.log(`Execution service response for test case ${i + 1}:`, JSON.stringify(result, null, 2));
                         if (result.passed) {
@@ -303,9 +395,9 @@ exports.testController = {
         var _a;
         try {
             const { testId } = req.params;
-            const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+            const userId = ((_a = req.user) === null || _a === void 0 ? void 0 : _a.id) || null;
             if (!userId) {
-                return res.status(401).json({ error: 'Unauthorized' });
+                console.log('[submitSolution] No authenticated user – treating as anonymous candidate');
             }
             // Get test from database
             const test = await prismaClient_1.prisma.test.findUnique({
@@ -441,23 +533,120 @@ exports.testController = {
                 };
                 // Execute tests against the code in the repository
                 let passedTests = 0;
-                // Determine the main file based on language
-                const language = test.language.toLowerCase();
-                let mainFile;
-                if (language === 'python') {
-                    mainFile = 'main.py';
+                // Determine the main file based on language (composite strings supported)
+                const langStr2 = (test.language || '').toLowerCase();
+                let language = 'python';
+                if (langStr2.includes('python')) {
+                    language = 'python';
                 }
-                else if (language === 'javascript') {
-                    mainFile = 'main.js';
+                else if (langStr2.includes('typescript')) {
+                    language = 'typescript';
                 }
-                else if (language === 'typescript') {
-                    mainFile = 'main.ts';
+                else if (langStr2.includes('javascript') || langStr2.includes('node')) {
+                    language = 'javascript';
                 }
-                else if (language === 'java') {
-                    mainFile = 'Main.java';
+                else if (langStr2.includes('java')) {
+                    language = 'java';
                 }
                 else {
-                    mainFile = 'main'; // Default
+                    if (fs.existsSync(path.join(tempDir, 'package.json'))) {
+                        language = 'javascript';
+                    }
+                    else if (fs.existsSync(path.join(tempDir, 'tsconfig.json'))) {
+                        language = 'typescript';
+                    }
+                    else if (fs.readdirSync(tempDir).some(f => f.endsWith('.py'))) {
+                        language = 'python';
+                    }
+                    else if (fs.readdirSync(tempDir).some(f => f.endsWith('.java'))) {
+                        language = 'java';
+                    }
+                }
+                console.log(`[scan] detected language for submission: ${language}`);
+                let extGlobal2 = { python: '.py', javascript: '.js', typescript: '.ts', java: '.java' }[language] || '';
+                const possibleFiles2 = {
+                    python: ['main.py', 'app.py'],
+                    javascript: ['main.js', 'index.js'],
+                    typescript: ['main.ts', 'index.ts'],
+                    java: ['Main.java']
+                };
+                let mainFile = null;
+                for (const candidate of possibleFiles2[language] || []) {
+                    if (fs.existsSync(path.join(tempDir, candidate))) {
+                        mainFile = candidate;
+                        break;
+                    }
+                }
+                if (!mainFile) {
+                    const files = fs.readdirSync(tempDir);
+                    const fallbackExts = ['.js', '.ts', '.py', '.java'];
+                    const foundAny = files.find(f => fallbackExts.some(ext => f.endsWith(ext)));
+                    if (foundAny) {
+                        mainFile = foundAny;
+                        console.log(`[scan] fallback picked ${foundAny} at repo root (submission)`);
+                        // adjust language and extension if mismatch
+                        if (foundAny.endsWith('.js')) {
+                            language = 'javascript';
+                            extGlobal2 = '.js';
+                        }
+                        else if (foundAny.endsWith('.ts')) {
+                            language = 'typescript';
+                            extGlobal2 = '.ts';
+                        }
+                        else if (foundAny.endsWith('.py')) {
+                            language = 'python';
+                            extGlobal2 = '.py';
+                        }
+                        else if (foundAny.endsWith('.java')) {
+                            language = 'java';
+                            extGlobal2 = '.java';
+                        }
+                    }
+                }
+                // Deep scan test/ directory
+                if (!mainFile) {
+                    const debugDirs2 = [];
+                    const walk = (dir) => {
+                        if (!fs.existsSync(dir))
+                            return null;
+                        debugDirs2.push(dir);
+                        console.log(`[scan] visiting (submission): ${dir}`);
+                        for (const entry of fs.readdirSync(dir)) {
+                            const full = path.join(dir, entry);
+                            const stat = fs.statSync(full);
+                            if (stat.isDirectory()) {
+                                const res = walk(full);
+                                if (res)
+                                    return res;
+                            }
+                            else if (entry.endsWith(extGlobal2)) {
+                                console.log(`[scan] candidate file found (submission): ${full}`);
+                                return path.relative(tempDir, full);
+                            }
+                            else {
+                                const fallbackExts = ['.js', '.ts', '.py', '.java'];
+                                if (fallbackExts.some(ext => entry.endsWith(ext))) {
+                                    console.log(`[scan] candidate file found (submission fallback ext): ${full}`);
+                                    return path.relative(tempDir, full);
+                                }
+                            }
+                        }
+                        return null;
+                    };
+                    const dirsToSearch2 = ['test', 'tests'];
+                    for (const d of dirsToSearch2) {
+                        const foundDeep = walk(path.join(tempDir, d));
+                        if (foundDeep) {
+                            mainFile = foundDeep;
+                            break;
+                        }
+                    }
+                    if (!mainFile) {
+                        console.warn('[scan] No entry file found in submission after scanning dirs:', debugDirs2);
+                    }
+                }
+                if (!mainFile) {
+                    throw new Error('Main entry file not found in repository');
                 }
                 // Check if the main file exists
                 const mainFilePath = path.join(tempDir, mainFile);
@@ -470,9 +659,10 @@ exports.testController = {
                     console.log(`Running submission test case ${i + 1}/${test.testCases.length}`);
                     try {
                         // Execute the code using the execution service
-                        const executionResponse = await axios_1.default.post(`${config_1.config.executionServiceUrl}/execute`, {
-                            language: test.language,
-                            code: fs.readFileSync(mainFilePath, 'utf8'),
+                        const executionResponse = await axios_1.default.post(`${config_1.config.executionServiceUrl}/run`, {
+                            language,
+                            repoUrl: gitRepoUrl,
+                            mainFile,
                             input: testCase.input || '',
                             testCase: {
                                 expectedOutput: testCase.expectedOutput,
@@ -516,7 +706,7 @@ exports.testController = {
                         status: testResults.status,
                         result: testResults,
                         testId: test.id,
-                        userId
+                        userId: userId || undefined
                     }
                 });
                 // Clean up temporary directory

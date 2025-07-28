@@ -193,3 +193,18 @@ export const uploadResume = async (formData: FormData): Promise<{ message: strin
     throw error;
   }
 };
+
+// Assessment Tracking API
+export const assessmentTracking = {
+  // Get real-time tracking data for a Job Description
+  async getTrackingData(jdId: string) {
+    const response = await api.get(`/api/jds/${jdId}/tracking`);
+    return response.data;
+  },
+
+  // Get detailed assessment data for a specific candidate
+  async getCandidateAssessment(candidateId: string) {
+    const response = await api.get(`/api/jds/candidate/${candidateId}/assessment`);
+    return response.data;
+  }
+};

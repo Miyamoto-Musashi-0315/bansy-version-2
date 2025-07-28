@@ -228,4 +228,119 @@ exports.aiController = {
             }
         }
     },
+    /**
+     * Create individual candidate repositories with CI/CD workflows and GitHub Issues
+     */
+    async createCandidateRepositories(req, res) {
+        var _a, _b, _c, _d, _e, _f, _g;
+        const { candidateIds } = req.body;
+        const { jdId } = req.params;
+        const user = req.user;
+        console.log(`[${new Date().toISOString()}] Starting candidate repo creation for JD: ${jdId}, Candidates: ${candidateIds === null || candidateIds === void 0 ? void 0 : candidateIds.length}`);
+        if (!user) {
+            console.error('Unauthorized access attempt to create candidate repositories');
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+        if (!candidateIds || !Array.isArray(candidateIds) || candidateIds.length === 0) {
+            return res.status(400).json({ error: 'Candidate IDs are required.' });
+        }
+        try {
+            // 1. Fetch the Job Description and its test
+            const jobDescription = await prismaClient_1.prisma.jobDescription.findUnique({
+                where: { id: jdId },
+                include: {
+                    test: {
+                        include: { testCases: true }
+                    }
+                }
+            });
+            if (!jobDescription) {
+                console.error(`Job Description not found: ${jdId}`);
+                return res.status(404).json({ error: 'Job Description not found.' });
+            }
+            if (!jobDescription.test) {
+                return res.status(400).json({ error: 'No test project has been generated for this JD yet.' });
+            }
+            // 2. Get the candidates
+            const candidates = await prismaClient_1.prisma.candidate.findMany({
+                where: {
+                    id: { in: candidateIds },
+                    jobDescriptionId: jdId,
+                },
+                include: {
+                    resume: true,
+                },
+            });
+            if (candidates.length === 0) {
+                return res.status(404).json({ error: 'No eligible candidates found.' });
+            }
+            // 3. Generate fresh project template with CI/CD components
+            console.log('Generating project template with CI/CD workflows...');
+            const projectTemplate = await geminiService.generateProjectFromJd({
+                title: jobDescription.title,
+                description: jobDescription.description,
+                minExperience: jobDescription.minExperience,
+                maxExperience: jobDescription.maxExperience,
+                languages: jobDescription.languages,
+                projectContext: jobDescription.projectContext,
+            });
+            console.log(`Project template generated with ${((_a = projectTemplate.githubWorkflows) === null || _a === void 0 ? void 0 : _a.length) || 0} workflows and ${((_b = projectTemplate.githubIssues) === null || _b === void 0 ? void 0 : _b.length) || 0} issues`);
+            // 4. Create individual repositories for each candidate
+            const candidateRepos = [];
+            for (const candidate of candidates) {
+                try {
+                    console.log(`Creating repository for candidate: ${candidate.id}`);
+                    // Create individual repository with CI/CD and issues
+                    const { repoUrl, cloneUrl } = await githubService.createCandidateRepo(jobDescription.test.id, candidate.id, projectTemplate.projectFiles, projectTemplate.githubWorkflows || [], projectTemplate.githubIssues || []);
+                    candidateRepos.push({
+                        candidateId: candidate.id,
+                        email: candidate.resume.email,
+                        repoUrl,
+                        cloneUrl,
+                    });
+                    // Update candidate status to 'TestSent'
+                    await prismaClient_1.prisma.candidate.update({
+                        where: { id: candidate.id },
+                        data: {
+                            status: 'TestSent',
+                        },
+                    });
+                    console.log(`Repository created for candidate ${candidate.id}: ${repoUrl}`);
+                }
+                catch (candidateError) {
+                    console.error(`Failed to create repository for candidate ${candidate.id}:`, candidateError);
+                    // Continue with other candidates instead of failing completely
+                }
+            }
+            console.log(`[${new Date().toISOString()}] Created ${candidateRepos.length} candidate repositories`);
+            res.status(201).json({
+                message: `Created ${candidateRepos.length} individual repositories with CI/CD pipelines`,
+                candidateRepositories: candidateRepos,
+                projectTemplate: {
+                    title: projectTemplate.title,
+                    description: projectTemplate.description,
+                    difficulty: projectTemplate.difficulty,
+                    workflowsCount: ((_c = projectTemplate.githubWorkflows) === null || _c === void 0 ? void 0 : _c.length) || 0,
+                    issuesCount: ((_d = projectTemplate.githubIssues) === null || _d === void 0 ? void 0 : _d.length) || 0,
+                },
+            });
+        }
+        catch (error) {
+            console.error(`[${new Date().toISOString()}] Error creating candidate repositories:`, {
+                message: error === null || error === void 0 ? void 0 : error.message,
+                stack: error === null || error === void 0 ? void 0 : error.stack,
+                name: error === null || error === void 0 ? void 0 : error.name,
+            });
+            // Provide specific error messages
+            if ((_e = error === null || error === void 0 ? void 0 : error.message) === null || _e === void 0 ? void 0 : _e.includes('GitHub')) {
+                return res.status(500).json({ error: 'Failed to create GitHub repositories. Please check GitHub configuration.' });
+            }
+            else if (((_f = error === null || error === void 0 ? void 0 : error.message) === null || _f === void 0 ? void 0 : _f.includes('Gemini')) || ((_g = error === null || error === void 0 ? void 0 : error.message) === null || _g === void 0 ? void 0 : _g.includes('AI'))) {
+                return res.status(500).json({ error: 'Failed to generate project with AI. Please try again.' });
+            }
+            else {
+                return res.status(500).json({ error: 'Failed to create candidate repositories. Please try again.' });
+            }
+        }
+    },
 };

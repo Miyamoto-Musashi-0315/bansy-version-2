@@ -8,8 +8,16 @@ const prismaClient_1 = require("../prismaClient");
 const geminiService_1 = require("../services/ai/geminiService");
 const pdf_parse_1 = __importDefault(require("pdf-parse"));
 const fs_1 = __importDefault(require("fs"));
+const githubService_1 = __importDefault(require("../services/githubService"));
+const config_1 = require("../config");
 // Initialize AI service
 const geminiService = new geminiService_1.GeminiService();
+// Map the orgName from config to the expected organizationName for the service
+const githubConfig = {
+    ...config_1.config.github,
+    organizationName: config_1.config.github.orgName,
+};
+const githubService = new githubService_1.default(githubConfig);
 exports.jdController = {
     /**
      * Creates a new Job Description
@@ -263,7 +271,7 @@ exports.jdController = {
      * Sends test links to selected candidates for a specific Job Description
      */
     async sendTestsToCandiidates(req, res) {
-        var _a;
+        var _a, _b, _c, _d, _e;
         console.log('jdController.sendTestsToCandiidates: START');
         try {
             const { id: jdId } = req.params;
@@ -301,40 +309,91 @@ exports.jdController = {
             if (candidates.length === 0) {
                 return res.status(404).json({ error: 'No eligible candidates found.' });
             }
-            // Update candidate status to 'TestSent'
-            const updatedCandidates = await Promise.all(candidates.map(candidate => prismaClient_1.prisma.candidate.update({
-                where: { id: candidate.id },
-                data: {
-                    status: 'TestSent',
-                },
-                include: {
-                    resume: true,
-                },
-            })));
-            // TODO: In a real application, you would send emails here
-            // For now, we'll just log the information that would be sent
-            console.log('Test links would be sent to:');
-            updatedCandidates.forEach(candidate => {
-                var _a;
-                console.log(`- ${candidate.resume.email}: ${(_a = jobDescription.test) === null || _a === void 0 ? void 0 : _a.gitRepoUrl}`);
+            // Create individual repositories with CI/CD workflows for each candidate
+            console.log(`Creating individual repositories for ${candidates.length} candidates...`);
+            // Generate fresh project template with CI/CD components
+            const projectTemplate = await geminiService.generateProjectFromJd({
+                title: jobDescription.title,
+                description: jobDescription.description,
+                minExperience: jobDescription.minExperience,
+                maxExperience: jobDescription.maxExperience,
+                languages: jobDescription.languages,
+                projectContext: jobDescription.projectContext,
             });
-            console.log('jdController.sendTestsToCandiidates: END - Tests sent successfully');
+            console.log(`Generated project with ${((_b = projectTemplate.githubWorkflows) === null || _b === void 0 ? void 0 : _b.length) || 0} workflows and ${((_c = projectTemplate.githubIssues) === null || _c === void 0 ? void 0 : _c.length) || 0} issues`);
+            // Create individual repositories for each candidate
+            const candidateResults = [];
+            for (const candidate of candidates) {
+                try {
+                    console.log(`Creating repository for candidate: ${candidate.resume.email}`);
+                    // Create individual repository with CI/CD and issues
+                    const { repoUrl, cloneUrl } = await githubService.createCandidateRepo(jobDescription.test.id, candidate.id, projectTemplate.projectFiles, projectTemplate.githubWorkflows || [], projectTemplate.githubIssues || []);
+                    candidateResults.push({
+                        candidateId: candidate.id,
+                        email: candidate.resume.email,
+                        repoUrl,
+                        success: true,
+                    });
+                    // Update candidate status to 'TestSent'
+                    await prismaClient_1.prisma.candidate.update({
+                        where: { id: candidate.id },
+                        data: {
+                            status: 'TestSent',
+                        },
+                    });
+                    console.log(`✅ Repository created for ${candidate.resume.email}: ${repoUrl}`);
+                }
+                catch (candidateError) {
+                    console.error(`❌ Failed to create repository for candidate ${candidate.id}:`, candidateError);
+                    candidateResults.push({
+                        candidateId: candidate.id,
+                        email: candidate.resume.email,
+                        repoUrl: '',
+                        success: false,
+                        error: candidateError.message,
+                    });
+                }
+            }
+            const successfulRepos = candidateResults.filter(r => r.success);
+            const failedRepos = candidateResults.filter(r => !r.success);
+            console.log(`jdController.sendTestsToCandiidates: END - ${successfulRepos.length} successful, ${failedRepos.length} failed`);
+            // TODO: In a real application, you would send emails here with individual repository links
+            console.log('Individual repository links would be sent to:');
+            successfulRepos.forEach(result => {
+                console.log(`- ${result.email}: ${result.repoUrl}`);
+            });
+            if (failedRepos.length > 0) {
+                console.warn('Failed to create repositories for:');
+                failedRepos.forEach(result => {
+                    console.warn(`- ${result.email}: ${result.error}`);
+                });
+            }
             res.status(200).json({
-                message: `Test links sent to ${updatedCandidates.length} candidates`,
-                sentTo: updatedCandidates.map(c => {
-                    var _a, _b;
+                message: `Individual repositories created for ${successfulRepos.length}/${candidateResults.length} candidates`,
+                successful: successfulRepos.length,
+                failed: failedRepos.length,
+                results: candidateResults.map(r => {
+                    var _a;
                     return ({
-                        candidateId: c.id,
-                        email: c.resume.email,
+                        candidateId: r.candidateId,
+                        email: r.email,
                         testUrl: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/test/${(_a = jobDescription.test) === null || _a === void 0 ? void 0 : _a.id}`,
-                        githubRepository: (_b = jobDescription.test) === null || _b === void 0 ? void 0 : _b.gitRepoUrl,
+                        githubRepository: r.repoUrl,
+                        success: r.success,
+                        error: r.error,
                     });
                 }),
+                projectInfo: {
+                    title: projectTemplate.title,
+                    difficulty: projectTemplate.difficulty,
+                    cicdWorkflows: ((_d = projectTemplate.githubWorkflows) === null || _d === void 0 ? void 0 : _d.length) || 0,
+                    githubIssues: ((_e = projectTemplate.githubIssues) === null || _e === void 0 ? void 0 : _e.length) || 0,
+                },
             });
         }
         catch (error) {
             console.error('jdController.sendTestsToCandiidates: ERROR sending tests:', error);
-            res.status(500).json({ error: 'Failed to send test links' });
+            res.status(500).json({ error: 'Failed to create individual repositories for candidates' });
         }
     },
 };

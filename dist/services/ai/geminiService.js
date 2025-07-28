@@ -202,7 +202,7 @@ Projects: ${projects.join(', ')}
      * @returns A project template with requirements and test cases
      */
     async generateProjectFromJd(jd) {
-        var _a, _b;
+        var _a, _b, _c;
         console.log('GeminiService.generateProjectFromJd: Starting project generation for JD:', jd.title);
         const getDifficulty = () => {
             if (jd.maxExperience <= 2)
@@ -242,7 +242,21 @@ Projects: ${projects.join(', ')}
       - Tests should cover unit tests, integration tests, and edge cases.
       - Include a test runner configuration and instructions on how to run the tests.
 
-      **5. INTENTIONAL BUGS & REFACTORING OPPORTUNITIES (Subtle):**
+      **5. CI/CD AUTOMATION WITH GITHUB ACTIONS:**
+      - Generate GitHub Actions workflows that automatically run tests on every push/pull request.
+      - Create workflows that check code quality, run test suites, and validate functionality.
+      - Include appropriate setup steps for the chosen languages and dependencies.
+      - Configure workflows to report test results and update GitHub Issues based on test outcomes.
+      - Use industry-standard CI/CD practices appropriate for the tech stack.
+
+      **6. GITHUB ISSUES FOR FEATURE TRACKING:**
+      - Create 3-5 GitHub Issues that represent key features or improvements candidates should implement.
+      - Each issue should map to specific test cases that validate the feature.
+      - Issues should progressively increase in difficulty (easy → medium → hard).
+      - Include clear acceptance criteria and implementation hints.
+      - Use appropriate labels (feature, bug, enhancement, testing, etc.).
+
+      **7. INTENTIONAL BUGS & REFACTORING OPPORTUNITIES (Subtle):**
       - Introduce 2-3 subtle bugs or areas for improvement that a candidate at the specified experience level should be able to identify and fix.
       - Examples based on experience:
         - **Junior (0-2 years):** Simple logical errors, inefficient loops, missing error handling.
@@ -252,7 +266,7 @@ Projects: ${projects.join(', ')}
 
       **OUTPUT FORMAT:**
       Return ONLY a valid JSON object. Do NOT include any explanatory text, code comments, or markdown formatting before or after the JSON object.
-      The JSON object must strictly follow this 'ProjectTemplate' interface:
+      The JSON object must strictly follow this enhanced 'ProjectTemplate' interface:
       {
         "title": "string",
         "description": "string (A summary of the generated project)",
@@ -264,6 +278,12 @@ Projects: ${projects.join(', ')}
         ],
         "testCases": [
           { "description": "string", "input": "string | null", "expectedOutput": "string", "category": "string (e.g., 'Unit', 'Integration', 'Edge Case')", "difficulty": "string (e.g., 'Easy', 'Medium', 'Hard')", "points": "number", "verificationMethod": "string (e.g., 'Exact Match', 'Contains', 'Regex')" }
+        ],
+        "githubWorkflows": [
+          { "path": "string (e.g., '.github/workflows/test.yml')", "content": "string (Complete YAML workflow content)" }
+        ],
+        "githubIssues": [
+          { "title": "string", "description": "string (Detailed description with acceptance criteria)", "labels": ["string", ...], "testCaseIds": [number, ...], "difficulty": "easy|medium|hard", "points": number }
         ]
       }
       `;
@@ -283,6 +303,12 @@ Projects: ${projects.join(', ')}
             }
             if (!formattedProject.testCases || formattedProject.testCases.length < 3) {
                 console.warn(`Generated project has insufficient test cases: ${((_b = formattedProject.testCases) === null || _b === void 0 ? void 0 : _b.length) || 0}`);
+            }
+            if (!formattedProject.githubWorkflows || formattedProject.githubWorkflows.length === 0) {
+                console.warn('Generated project missing GitHub workflows.');
+            }
+            if (!formattedProject.githubIssues || formattedProject.githubIssues.length < 3) {
+                console.warn(`Generated project has insufficient GitHub issues: ${((_c = formattedProject.githubIssues) === null || _c === void 0 ? void 0 : _c.length) || 0}`);
             }
             return formattedProject;
         }

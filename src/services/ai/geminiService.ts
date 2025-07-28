@@ -130,6 +130,19 @@ export interface ProjectTemplate {
     path: string;
     content: string;
   }>;
+  // New CI/CD and Issues components
+  githubWorkflows: Array<{
+    path: string; // e.g., '.github/workflows/test.yml'
+    content: string; // YAML workflow content
+  }>;
+  githubIssues: Array<{
+    title: string;
+    description: string;
+    labels: string[]; // e.g., ['feature', 'testing', 'enhancement']
+    testCaseIds: number[]; // Maps to testCases array indices
+    difficulty: 'easy' | 'medium' | 'hard';
+    points: number;
+  }>;
 }
 
 // Interface for GitHub API response (simplified)
@@ -341,7 +354,22 @@ Projects: ${projects.join(', ')}
       - Tests should cover unit tests, integration tests, and edge cases.
       - Include a test runner configuration and instructions on how to run the tests.
 
-      **5. INTENTIONAL BUGS & REFACTORING OPPORTUNITIES (Subtle):**
+      **5. CI/CD AUTOMATION WITH GITHUB ACTIONS:**
+      - Generate GitHub Actions workflows that automatically run tests on every push/pull request **AND** can be triggered manually.
+      - Each workflow MUST include \`workflow_dispatch\` in its \`on:\` section, e.g. \`on: [push, pull_request, workflow_dispatch]\`, so the platform can dispatch it programmatically.
+      - Create workflows that check code quality, run test suites, and validate functionality.
+      - Include appropriate setup steps for the chosen languages and dependencies.
+      - Configure workflows to report test results and update GitHub Issues based on test outcomes.
+      - Use industry-standard CI/CD practices appropriate for the tech stack.
+
+      **6. GITHUB ISSUES FOR FEATURE TRACKING:**
+      - Create 3-5 GitHub Issues that represent key features or improvements candidates should implement.
+      - Each issue should map to specific test cases that validate the feature.
+      - Issues should progressively increase in difficulty (easy → medium → hard).
+      - Include clear acceptance criteria and implementation hints.
+      - Use appropriate labels (feature, bug, enhancement, testing, etc.).
+
+      **7. INTENTIONAL BUGS & REFACTORING OPPORTUNITIES (Subtle):**
       - Introduce 2-3 subtle bugs or areas for improvement that a candidate at the specified experience level should be able to identify and fix.
       - Examples based on experience:
         - **Junior (0-2 years):** Simple logical errors, inefficient loops, missing error handling.
@@ -351,7 +379,7 @@ Projects: ${projects.join(', ')}
 
       **OUTPUT FORMAT:**
       Return ONLY a valid JSON object. Do NOT include any explanatory text, code comments, or markdown formatting before or after the JSON object.
-      The JSON object must strictly follow this 'ProjectTemplate' interface:
+      The JSON object must strictly follow this enhanced 'ProjectTemplate' interface:
       {
         "title": "string",
         "description": "string (A summary of the generated project)",
@@ -363,6 +391,12 @@ Projects: ${projects.join(', ')}
         ],
         "testCases": [
           { "description": "string", "input": "string | null", "expectedOutput": "string", "category": "string (e.g., 'Unit', 'Integration', 'Edge Case')", "difficulty": "string (e.g., 'Easy', 'Medium', 'Hard')", "points": "number", "verificationMethod": "string (e.g., 'Exact Match', 'Contains', 'Regex')" }
+        ],
+        "githubWorkflows": [
+          { "path": "string (e.g., '.github/workflows/test.yml')", "content": "string (Complete YAML workflow content)" }
+        ],
+        "githubIssues": [
+          { "title": "string", "description": "string (Detailed description with acceptance criteria)", "labels": ["string", ...], "testCaseIds": [number, ...], "difficulty": "easy|medium|hard", "points": number }
         ]
       }
       `;
@@ -385,6 +419,12 @@ Projects: ${projects.join(', ')}
       }
       if (!formattedProject.testCases || formattedProject.testCases.length < 3) {
         console.warn(`Generated project has insufficient test cases: ${formattedProject.testCases?.length || 0}`);
+      }
+      if (!formattedProject.githubWorkflows || formattedProject.githubWorkflows.length === 0) {
+        console.warn('Generated project missing GitHub workflows.');
+      }
+      if (!formattedProject.githubIssues || formattedProject.githubIssues.length < 3) {
+        console.warn(`Generated project has insufficient GitHub issues: ${formattedProject.githubIssues?.length || 0}`);
       }
 
       return formattedProject;
@@ -474,6 +514,252 @@ Return ONLY a JSON object with this exact structure:
     } catch (error) {
       console.error('Error in resume-JD analysis:', error);
       throw new Error(`Resume analysis failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  /**
+   * Comprehensive LLM-based code evaluation for candidate repositories (60% scoring component)
+   * This is the advanced intelligence layer that evaluates code quality, architecture, and innovation
+   * @param repoData Repository information and code content
+   * @param jobDescription The job description to evaluate against
+   * @param testCases The test cases that should be implemented
+   * @returns Detailed code evaluation with 60-point score breakdown
+   */
+  public async evaluateCodeRepository(repoData: {
+    repoUrl: string;
+    repoName: string;
+    files: Array<{ path: string; content: string }>;
+    commitHistory?: Array<{ sha: string; message: string; timestamp: string }>;
+    cicdResults?: { passed: number; total: number; details: any };
+  }, jobDescription: {
+    title: string;
+    description: string;
+    languages: string[];
+    minExperience: number;
+    maxExperience: number;
+    projectContext: string;
+  }, testCases: Array<{
+    description: string;
+    expectedOutput: string;
+    category?: string;
+    difficulty?: string;
+  }>): Promise<{
+    totalScore: number; // 0-60 (out of 60% component)
+    breakdown: {
+      codeQuality: { score: number; max: 15; feedback: string };
+      architecture: { score: number; max: 15; feedback: string };
+      innovation: { score: number; max: 10; feedback: string };
+      bestPractices: { score: number; max: 10; feedback: string };
+      performance: { score: number; max: 5; feedback: string };
+      security: { score: number; max: 5; feedback: string };
+    };
+    overallFeedback: string;
+    strengths: string[];
+    improvements: string[];
+    expertRecommendation: 'hire' | 'strong_consider' | 'consider' | 'pass';
+  }> {
+    console.log('GeminiService: Starting comprehensive code evaluation for repo:', repoData.repoName);
+
+    // Prepare file contents for analysis
+    const fileContents = repoData.files.map(file => 
+      `--- FILE: ${file.path} ---\n${file.content}\n`
+    ).join('\n');
+
+    const prompt = `You are a Senior Software Engineer conducting a comprehensive code review for a ${jobDescription.title} position. 
+
+**CANDIDATE CONTEXT:**
+- Position: ${jobDescription.title}
+- Required Experience: ${jobDescription.minExperience}-${jobDescription.maxExperience} years
+- Required Languages: ${jobDescription.languages.join(', ')}
+- Project Context: ${jobDescription.projectContext}
+
+**REPOSITORY ANALYSIS:**
+Repository: ${repoData.repoName}
+URL: ${repoData.repoUrl}
+
+**CODE FILES TO ANALYZE:**
+${fileContents}
+
+**CI/CD TEST RESULTS:**
+${repoData.cicdResults ? `Passed: ${repoData.cicdResults.passed}/${repoData.cicdResults.total} tests` : 'No CI/CD results available'}
+
+**EVALUATION CRITERIA (60 POINTS TOTAL):**
+
+1. **Code Quality (15 points)**: Clean code, readability, documentation, naming conventions, code organization
+2. **Architecture & Design (15 points)**: Project structure, design patterns, modularity, scalability considerations
+3. **Innovation & Problem Solving (10 points)**: Creative solutions, additional features beyond requirements, algorithmic thinking
+4. **Best Practices (10 points)**: Error handling, testing approach, version control usage, dependency management
+5. **Performance (5 points)**: Efficiency, optimization, resource usage
+6. **Security (5 points)**: Input validation, secure coding practices, vulnerability avoidance
+
+**ANALYSIS REQUIREMENTS:**
+- Evaluate against the experience level (${jobDescription.minExperience}-${jobDescription.maxExperience} years)
+- Consider the specific role requirements and tech stack
+- Provide constructive, actionable feedback
+- Be fair but thorough in assessment
+
+Return ONLY a valid JSON object with this EXACT structure:
+{
+  "totalScore": number (0-60),
+  "breakdown": {
+    "codeQuality": {
+      "score": number (0-15),
+      "max": 15,
+      "feedback": "detailed analysis of code quality aspects"
+    },
+    "architecture": {
+      "score": number (0-15),
+      "max": 15,
+      "feedback": "analysis of project structure and design decisions"
+    },
+    "innovation": {
+      "score": number (0-10),
+      "max": 10,
+      "feedback": "evaluation of creative problem-solving and additional features"
+    },
+    "bestPractices": {
+      "score": number (0-10),
+      "max": 10,
+      "feedback": "assessment of development best practices"
+    },
+    "performance": {
+      "score": number (0-5),
+      "max": 5,
+      "feedback": "evaluation of code efficiency and optimization"
+    },
+    "security": {
+      "score": number (0-5),
+      "max": 5,
+      "feedback": "analysis of security considerations"
+    }
+  },
+  "overallFeedback": "comprehensive summary of the candidate's coding abilities",
+  "strengths": ["specific strength 1", "specific strength 2", "..."],
+  "improvements": ["specific improvement 1", "specific improvement 2", "..."],
+  "expertRecommendation": "hire|strong_consider|consider|pass"
+}`;
+
+    try {
+      const evaluationText = await generateContentWithFallback(prompt);
+      const evaluation = this.safeParseJson<any>(evaluationText, 'code evaluation');
+      
+      console.log('Code evaluation completed. Total LLM score:', evaluation.totalScore, '/60');
+      return evaluation;
+    } catch (error) {
+      console.error('Error in code evaluation:', error);
+      throw new Error(`Code evaluation failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  /**
+   * Generate a comprehensive final assessment report combining CI/CD (40%) + LLM evaluation (60%)
+   * @param cicdScore Score from automated tests (0-40)
+   * @param llmEvaluation LLM evaluation results (0-60)
+   * @param candidateInfo Basic candidate information
+   * @returns Final hybrid assessment report
+   */
+  public async generateFinalAssessment(
+    cicdScore: number,
+    llmEvaluation: any,
+    candidateInfo: {
+      email: string;
+      suitabilityScore: number;
+      position: string;
+    }
+  ): Promise<{
+    finalScore: number; // 0-100 (40% CI/CD + 60% LLM)
+    grade: 'A+' | 'A' | 'B+' | 'B' | 'C+' | 'C' | 'D' | 'F';
+    recommendation: 'Strong Hire' | 'Hire' | 'Consider' | 'No Hire';
+    summary: string;
+    details: {
+      automatedTests: { score: number; percentage: string };
+      codeReview: { score: number; percentage: string };
+      breakdown: any;
+    };
+  }> {
+    console.log('GeminiService: Generating final assessment report');
+
+    const finalScore = cicdScore + llmEvaluation.totalScore;
+    
+    // Determine grade based on final score
+    let grade: 'A+' | 'A' | 'B+' | 'B' | 'C+' | 'C' | 'D' | 'F';
+    let recommendation: 'Strong Hire' | 'Hire' | 'Consider' | 'No Hire';
+
+    if (finalScore >= 90) {
+      grade = 'A+';
+      recommendation = 'Strong Hire';
+    } else if (finalScore >= 85) {
+      grade = 'A';
+      recommendation = 'Strong Hire';
+    } else if (finalScore >= 80) {
+      grade = 'B+';
+      recommendation = 'Hire';
+    } else if (finalScore >= 75) {
+      grade = 'B';
+      recommendation = 'Hire';
+    } else if (finalScore >= 70) {
+      grade = 'C+';
+      recommendation = 'Consider';
+    } else if (finalScore >= 65) {
+      grade = 'C';
+      recommendation = 'Consider';
+    } else if (finalScore >= 60) {
+      grade = 'D';
+      recommendation = 'No Hire';
+    } else {
+      grade = 'F';
+      recommendation = 'No Hire';
+    }
+
+    const assessmentPrompt = `Generate a professional final assessment summary for this candidate:
+
+**Candidate**: ${candidateInfo.email}
+**Position**: ${candidateInfo.position}
+**Resume Suitability**: ${candidateInfo.suitabilityScore}/10
+**Final Technical Score**: ${finalScore}/100
+**Grade**: ${grade}
+**Recommendation**: ${recommendation}
+
+**Score Breakdown**:
+- Automated Tests (40%): ${cicdScore}/40
+- Code Review (60%): ${llmEvaluation.totalScore}/60
+
+**LLM Evaluation Details**:
+${JSON.stringify(llmEvaluation.breakdown, null, 2)}
+
+**Strengths**: ${llmEvaluation.strengths.join(', ')}
+**Areas for Improvement**: ${llmEvaluation.improvements.join(', ')}
+
+Create a professional, concise summary (2-3 paragraphs) that:
+1. Highlights the candidate's technical performance
+2. Notes key strengths and areas for improvement
+3. Justifies the recommendation
+
+Return only the summary text, no JSON formatting.`;
+
+    try {
+      const summaryText = await generateContentWithFallback(assessmentPrompt);
+      
+      return {
+        finalScore,
+        grade,
+        recommendation,
+        summary: summaryText.trim(),
+        details: {
+          automatedTests: { 
+            score: cicdScore, 
+            percentage: `${Math.round((cicdScore / 40) * 100)}%` 
+          },
+          codeReview: { 
+            score: llmEvaluation.totalScore, 
+            percentage: `${Math.round((llmEvaluation.totalScore / 60) * 100)}%` 
+          },
+          breakdown: llmEvaluation.breakdown
+        }
+      };
+    } catch (error) {
+      console.error('Error generating final assessment:', error);
+      throw new Error(`Final assessment generation failed: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 }

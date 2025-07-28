@@ -7,6 +7,10 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import * as util from 'util';
+import GithubService from '../services/githubService';
+// Map the orgName from config to what GithubService expects
+const githubConfig = { ...config.github, organizationName: config.github.orgName };
+const githubService = new GithubService(githubConfig);
 
 /**
  * Controller for handling test-related operations
@@ -164,23 +168,108 @@ export const testController = {
           }
         }
         
-        // Execute tests against the code in the repository
-        let passedTests = 0;
-        
-        // Determine the main file based on language
-        const language = test.language.toLowerCase();
-        let mainFile;
-        
-        if (language === 'python') {
-          mainFile = 'main.py';
-        } else if (language === 'javascript') {
-          mainFile = 'main.js';
-        } else if (language === 'typescript') {
-          mainFile = 'main.ts';
-        } else if (language === 'java') {
-          mainFile = 'Main.java';
+        // Determine language – first from DB field, then heuristics if unclear
+        const langStr = (test.language || '').toLowerCase();
+        let language: 'python' | 'javascript' | 'typescript' | 'java' = 'python';
+        if (langStr.includes('python')) {
+          language = 'python';
+        } else if (langStr.includes('typescript')) {
+          language = 'typescript';
+        } else if (langStr.includes('javascript') || langStr.includes('node')) {
+          language = 'javascript';
+        } else if (langStr.includes('java')) {
+          language = 'java';
         } else {
-          mainFile = 'main'; // Default
+          // Heuristic: look for key marker files
+          if (fs.existsSync(path.join(tempDir, 'package.json'))) {
+            language = 'javascript';
+          } else if (fs.existsSync(path.join(tempDir, 'tsconfig.json'))) {
+            language = 'typescript';
+          } else if (fs.readdirSync(tempDir).some(f => f.endsWith('.py'))) {
+            language = 'python';
+          } else if (fs.readdirSync(tempDir).some(f => f.endsWith('.java'))) {
+            language = 'java';
+          }
+        }
+        console.log(`[scan] detected language for runTests: ${language}`);
+
+        // variable to track tests passed
+        let passedTests = 0;
+
+        const extGlobal = ({python:'.py', javascript:'.js', typescript:'.ts', java:'.java'} as Record<string,string>)[language] || '';
+
+        const possibleFiles: Record<string, string[]> = {
+          python: ['main.py', 'app.py'],
+          javascript: ['main.js', 'index.js'],
+          typescript: ['main.ts', 'index.ts'],
+          java: ['Main.java']
+        };
+
+        let mainFile: string | null = null;
+        for (const candidate of possibleFiles[language] || []) {
+          if (fs.existsSync(path.join(tempDir, candidate))) {
+            mainFile = candidate;
+            break;
+          }
+        }
+
+        if (!mainFile) {
+          // Last resort: pick first supported language file at repo root
+          const files = fs.readdirSync(tempDir);
+          const fallbackExts = ['.js','.ts','.py','.java'];
+          const foundAny = files.find(f => fallbackExts.some(ext=>f.endsWith(ext)));
+          if (foundAny) {
+            mainFile = foundAny;
+            console.log(`[scan] fallback picked ${foundAny} at repo root`);
+            // adjust language if mismatch
+            if (foundAny.endsWith('.js')) language='javascript';
+            else if (foundAny.endsWith('.ts')) language='typescript';
+            else if (foundAny.endsWith('.py')) language='python';
+            else if (foundAny.endsWith('.java')) language='java';
+          }
+        }
+
+        // Deep scan `test` or `tests` directories
+        if (!mainFile) {
+          const debugDirs: string[] = [];
+
+          const walk = (dir: string): string | null => {
+            if (!fs.existsSync(dir)) return null;
+            debugDirs.push(dir);
+            console.log(`[scan] visiting: ${dir}`);
+            for (const entry of fs.readdirSync(dir)) {
+              const full = path.join(dir, entry);
+              const stat = fs.statSync(full);
+              if (stat.isDirectory()) {
+                const res = walk(full);
+                if (res) return res;
+              } else if (entry.endsWith(extGlobal)) {
+                console.log(`[scan] candidate file found: ${full}`);
+                return path.relative(tempDir, full);
+              } else {
+                const fallbackExts = ['.js','.ts','.py','.java'];
+                if (fallbackExts.some(ext=>entry.endsWith(ext))) {
+                  console.log(`[scan] candidate file found (fallback ext): ${full}`);
+                  return path.relative(tempDir, full);
+                }
+              }
+            }
+            return null;
+          };
+
+          const dirsToSearch = ['test', 'tests'];
+          for (const d of dirsToSearch) {
+            const foundDeep = walk(path.join(tempDir, d));
+            if (foundDeep) { mainFile = foundDeep; break; }
+          }
+
+          if (!mainFile) {
+            console.warn('[scan] No entry file found after scanning directories:', debugDirs);
+          }
+        }
+
+        if (!mainFile) {
+          throw new Error('Main entry file not found in repository');
         }
         
         // Check if the main file exists
@@ -197,8 +286,9 @@ export const testController = {
           try {
             // Prepare payload for execution service
             const payload = {
-              language: test.language,
-              code: fs.readFileSync(mainFilePath, 'utf8'),
+              language,
+              repoUrl: gitRepoUrl,
+              mainFile,
               input: testCase.input || '',
               testCase: {
                 expectedOutput: testCase.expectedOutput,
@@ -208,9 +298,19 @@ export const testController = {
 
             console.log(`Executing test case ${i+1} with payload:`, JSON.stringify(payload, null, 2));
 
-            // Execute the code using the execution service
+            // Execute the code using the external execution service (if configured)
+            if (!config.executionServiceUrl) {
+              console.warn('[runTests] executionServiceUrl is not configured – skipping remote execution');
+              testResults.results.push({
+                testCase: i,
+                passed: false,
+                error: 'Execution service disabled – configure EXECUTION_SERVICE_URL to enable remote runs.'
+              });
+              continue;
+            }
+
             const executionResponse = await axios.post(
-              `${config.executionServiceUrl}/execute`,
+              `${config.executionServiceUrl}/run`,
               payload
             );
             
@@ -292,24 +392,57 @@ export const testController = {
   async submitSolution(req: Request, res: Response) {
     try {
       const { testId } = req.params;
-      const userId = (req as any).user?.id;
-      
+      const userId = (req as any).user?.id || null;
       if (!userId) {
-        return res.status(401).json({ error: 'Unauthorized' });
+        console.log('[submitSolution] No authenticated user – treating as anonymous candidate');
       }
-      
+
       // Get test from database
       const test = await prisma.test.findUnique({
         where: { id: testId },
         include: { testCases: true }
       });
-      
+
       if (!test) {
         return res.status(404).json({ error: 'Test not found' });
       }
-      
+
       if (!test.gitRepoUrl) {
         return res.status(400).json({ error: 'No Git repository URL found for this test' });
+      }
+
+      // ────────────────────────────────────────────────────────────
+      // NEW: If no execution micro-service is configured we rely on
+      // the repository's CI/CD pipeline for test execution.
+      // ────────────────────────────────────────────────────────────
+      if (!config.executionServiceUrl) {
+        try {
+          // Extract repo name from the URL: https://github.com/org/repo.git
+          const repoNameMatch = test.gitRepoUrl.match(/github\.com\/[^\/]+\/(.+?)(?:\.git)?$/);
+          const repoName = repoNameMatch ? repoNameMatch[1] : null;
+          if (!repoName) {
+            return res.status(400).json({ error: 'Unable to parse repository name from URL.' });
+          }
+
+          // No manual dispatch – rely on push / PR triggers. Just record the submission.
+
+          const submission = await prisma.submission.create({
+            data: {
+              status: 'pending',
+              testId: test.id,
+              userId: userId || undefined,
+            },
+          });
+
+          return res.json({
+            submissionId: submission.id,
+            status: 'pending',
+            message: 'Submission recorded. CI/CD workflow will run automatically when the candidate pushes or updates their pull-request.'
+          });
+        } catch (err: any) {
+          console.error('[submitSolution] Error triggering workflow dispatch:', err);
+          return res.status(500).json({ error: 'Failed to trigger CI/CD workflow for this submission.' });
+        }
       }
       
       // Run the tests on the repository code (reusing the same logic as runTests)
@@ -450,20 +583,100 @@ export const testController = {
         // Execute tests against the code in the repository
         let passedTests = 0;
         
-        // Determine the main file based on language
-        const language = test.language.toLowerCase();
-        let mainFile;
-        
-        if (language === 'python') {
-          mainFile = 'main.py';
-        } else if (language === 'javascript') {
-          mainFile = 'main.js';
-        } else if (language === 'typescript') {
-          mainFile = 'main.ts';
-        } else if (language === 'java') {
-          mainFile = 'Main.java';
+        // Determine the main file based on language (composite strings supported)
+        const langStr2 = (test.language || '').toLowerCase();
+        let language: 'python' | 'javascript' | 'typescript' | 'java' = 'python';
+        if (langStr2.includes('python')) {
+          language = 'python';
+        } else if (langStr2.includes('typescript')) {
+          language = 'typescript';
+        } else if (langStr2.includes('javascript') || langStr2.includes('node')) {
+          language = 'javascript';
+        } else if (langStr2.includes('java')) {
+          language = 'java';
         } else {
-          mainFile = 'main'; // Default
+          if (fs.existsSync(path.join(tempDir, 'package.json'))) {
+            language = 'javascript';
+          } else if (fs.existsSync(path.join(tempDir, 'tsconfig.json'))) {
+            language = 'typescript';
+          } else if (fs.readdirSync(tempDir).some(f => f.endsWith('.py'))) {
+            language = 'python';
+          } else if (fs.readdirSync(tempDir).some(f => f.endsWith('.java'))) {
+            language = 'java';
+          }
+        }
+        console.log(`[scan] detected language for submission: ${language}`);
+
+        let extGlobal2 = ({python:'.py', javascript:'.js', typescript:'.ts', java:'.java'} as Record<string,string>)[language] || '';
+
+        const possibleFiles2: Record<string, string[]> = {
+          python: ['main.py', 'app.py'],
+          javascript: ['main.js', 'index.js'],
+          typescript: ['main.ts', 'index.ts'],
+          java: ['Main.java']
+        };
+
+        let mainFile: string | null = null;
+        for (const candidate of possibleFiles2[language] || []) {
+          if (fs.existsSync(path.join(tempDir, candidate))) {
+            mainFile = candidate;
+            break;
+          }
+        }
+
+        if (!mainFile) {
+          const files = fs.readdirSync(tempDir);
+          const fallbackExts = ['.js','.ts','.py','.java'];
+          const foundAny = files.find(f => fallbackExts.some(ext=>f.endsWith(ext)));
+          if (foundAny) {
+            mainFile = foundAny;
+            console.log(`[scan] fallback picked ${foundAny} at repo root (submission)`);
+            // adjust language and extension if mismatch
+            if (foundAny.endsWith('.js')) { language='javascript'; extGlobal2='.js'; }
+            else if (foundAny.endsWith('.ts')) { language='typescript'; extGlobal2='.ts'; }
+            else if (foundAny.endsWith('.py')) { language='python'; extGlobal2='.py'; }
+            else if (foundAny.endsWith('.java')) { language='java'; extGlobal2='.java'; }
+          }
+        }
+
+        // Deep scan test/ directory
+        if (!mainFile) {
+          const debugDirs2: string[] = [];
+          const walk = (dir: string): string | null => {
+            if (!fs.existsSync(dir)) return null;
+            debugDirs2.push(dir);
+            console.log(`[scan] visiting (submission): ${dir}`);
+            for (const entry of fs.readdirSync(dir)) {
+              const full = path.join(dir, entry);
+              const stat = fs.statSync(full);
+              if (stat.isDirectory()) {
+                const res = walk(full);
+                if (res) return res;
+              } else if (entry.endsWith(extGlobal2)) {
+                console.log(`[scan] candidate file found (submission): ${full}`);
+                return path.relative(tempDir, full);
+              } else {
+                const fallbackExts = ['.js','.ts','.py','.java'];
+                if (fallbackExts.some(ext=>entry.endsWith(ext))) {
+                  console.log(`[scan] candidate file found (submission fallback ext): ${full}`);
+                  return path.relative(tempDir, full);
+                }
+              }
+            }
+            return null;
+          };
+          const dirsToSearch2 = ['test', 'tests'];
+          for (const d of dirsToSearch2) {
+            const foundDeep = walk(path.join(tempDir, d));
+            if (foundDeep) { mainFile = foundDeep; break; }
+          }
+          if (!mainFile) {
+            console.warn('[scan] No entry file found in submission after scanning dirs:', debugDirs2);
+          }
+        }
+
+        if (!mainFile) {
+          throw new Error('Main entry file not found in repository');
         }
         
         // Check if the main file exists
@@ -478,37 +691,53 @@ export const testController = {
           console.log(`Running submission test case ${i+1}/${test.testCases.length}`);
           
           try {
-            // Execute the code using the execution service
-            const executionResponse = await axios.post(
-              `${config.executionServiceUrl}/execute`,
-              {
-                language: test.language,
-                code: fs.readFileSync(mainFilePath, 'utf8'),
-                input: testCase.input || '',
-                testCase: {
-                  expectedOutput: testCase.expectedOutput,
-                  description: testCase.description
-                }
+            // Prepare payload for execution service
+            const payload = {
+              language,
+              repoUrl: gitRepoUrl,
+              mainFile,
+              input: testCase.input || '',
+              testCase: {
+                expectedOutput: testCase.expectedOutput,
+                description: testCase.description
               }
-            );
-            
-            const result = executionResponse.data;
-            
-            if (result.passed) {
-              passedTests++;
-              testResults.results.push({
-                testCase: i,
-                passed: true,
-                output: result.output || "Test passed successfully."
-              });
-            } else {
+            };
+
+            console.log(`Executing submission test case ${i+1} with payload:`, JSON.stringify(payload, null, 2));
+
+            // Execute the code using the external execution service (if configured)
+            if (!config.executionServiceUrl) {
+              console.warn('[submitSolution] executionServiceUrl not configured – skipping remote execution');
               testResults.results.push({
                 testCase: i,
                 passed: false,
-                output: result.output || "",
-                error: result.error || `Expected: ${testCase.expectedOutput}`
+                error: 'Execution service disabled – configure EXECUTION_SERVICE_URL to enable remote runs.'
               });
+            } else {
+              const executionResponse = await axios.post(
+                `${config.executionServiceUrl}/run`,
+                payload
+              );
+              const result = executionResponse.data;
+              // existing after-call logic will process result; to preserve flow, we assign similar to earlier var name
+              if (result.passed) {
+                passedTests++;
+                testResults.results.push({
+                  testCase: i,
+                  passed: true,
+                  output: result.output || 'Test passed successfully.'
+                });
+              } else {
+                testResults.results.push({
+                  testCase: i,
+                  passed: false,
+                  output: result.output || '',
+                  error: result.error || `Expected: ${testCase.expectedOutput}`
+                });
+              }
             }
+            
+            // if execution disabled, we already pushed to results
           } catch (error: any) {
             console.error(`Error executing submission test case ${i}:`, error);
             testResults.results.push({
@@ -530,7 +759,7 @@ export const testController = {
             status: testResults.status,
             result: testResults as any,
             testId: test.id,
-            userId
+            userId: userId || undefined
           }
         });
         

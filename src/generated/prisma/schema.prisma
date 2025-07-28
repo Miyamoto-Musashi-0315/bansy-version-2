@@ -9,9 +9,15 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-generator client {
+// Generate client to custom src path (existing consumers)
+generator client_custom {
   provider = "prisma-client-js"
   output   = "../src/generated/prisma"
+}
+
+// Standard client to node_modules for compatibility with libs using @prisma/client
+generator client {
+  provider = "prisma-client-js"
 }
 
 enum UserRole {
@@ -58,17 +64,19 @@ model JobDescription {
 
 // Represents a candidate's application for a specific job.
 model Candidate {
-  id                  String            @id @default(cuid())
+  id                  String         @id @default(cuid())
   status              String // e.g., "PendingReview", "TestSent", "Completed"
   suitabilityScore    Float? // The AI's score for the resume against the JD
   suitabilityAnalysis Json? // The AI's rationale for the score
-  createdAt           DateTime          @default(now())
-  updatedAt           DateTime          @updatedAt
-  jobDescription      JobDescription    @relation(fields: [jobDescriptionId], references: [id])
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  jobDescription      JobDescription @relation(fields: [jobDescriptionId], references: [id])
   jobDescriptionId    String
-  resume              Resume            @relation(fields: [resumeId], references: [id])
+  resume              Resume         @relation(fields: [resumeId], references: [id])
   resumeId            String
-  submissionEvents    SubmissionEvent[]
+
+  // Relation to store GitHub/webhook activity events
+  submissionEvents SubmissionEvent[]
 
   @@unique([jobDescriptionId, resumeId]) // A person can only apply to a job once with the same resume
 }
@@ -88,23 +96,27 @@ model Resume {
 
 // A standardized test generated from a Job Description.
 model Test {
-  id               String            @id @default(cuid())
+  id               String         @id @default(cuid())
   title            String
   description      String?
   difficulty       String
   gitRepoUrl       String?
   language         String
   requirements     Json
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  jobDescription   JobDescription    @relation(fields: [jobDescriptionId], references: [id])
-  jobDescriptionId String            @unique // Each JD has only one Test
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  jobDescription   JobDescription @relation(fields: [jobDescriptionId], references: [id])
+  jobDescriptionId String         @unique // Each JD has only one Test
   testCases        TestCase[]
   files            TestFile[]
   submissions      Submission[]
-  repoArchived     Boolean           @default(false)
-  repoArchivedAt   DateTime?
+
+  // Webhook activity events for this test across all candidates
   submissionEvents SubmissionEvent[]
+
+  // Archival status for post-assessment cleanup
+  repoArchived   Boolean   @default(false)
+  repoArchivedAt DateTime?
 }
 
 model TestCase {
@@ -129,41 +141,34 @@ model TestFile {
 }
 
 model Submission {
-  id        String              @id @default(cuid())
-  createdAt DateTime            @default(now())
-  updatedAt DateTime            @updatedAt
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   status    String // pending, completed, failed
-  result    Json? // Test results and feedback
+  result    Json? // Test results (raw)
+  feedback  Json? // Human/LLM-friendly feedback object
   testId    String
-  test      Test                @relation(fields: [testId], references: [id])
+  test      Test     @relation(fields: [testId], references: [id])
   userId    String?
-  user      User?               @relation(fields: [userId], references: [id])
-  aiScore   Float? // Overall AI-assigned score for the submission
-  feedback  Json? // Detailed AI feedback comments
-  snapshot  SubmissionSnapshot?
+  user      User?    @relation(fields: [userId], references: [id])
+
+  // Final AI or hybrid score (optional)
+  aiScore Float?
 }
 
-// Add model to track GitHub webhook events for repository pushes
+///  --- NEW: GitHub / CI activity timeline ---
 model SubmissionEvent {
-  id          String     @id @default(cuid())
-  repoName    String
-  commitSha   String
-  branch      String
-  pusher      String
-  eventType   String // e.g., "push", "pull_request"
-  receivedAt  DateTime   @default(now())
-  // Optional relations to link this event back to platform entities
-  test        Test?      @relation(fields: [testId], references: [id])
-  testId      String?
+  id         String   @id @default(cuid())
+  repoName   String
+  commitSha  String
+  branch     String
+  pusher     String
+  eventType  String // push, workflow_success, issue_opened, etc.
+  receivedAt DateTime @default(now())
+
+  // Optional relations back to Candidate & Test for convenient queries
   candidate   Candidate? @relation(fields: [candidateId], references: [id])
   candidateId String?
-}
-
-model SubmissionSnapshot {
-  id           String     @id @default(cuid())
-  submission   Submission @relation(fields: [submissionId], references: [id])
-  submissionId String     @unique
-  archivePath  String // Path to zip/tar.gz of the code snapshot
-  commitSha    String
-  createdAt    DateTime   @default(now())
+  test        Test?      @relation(fields: [testId], references: [id])
+  testId      String?
 }

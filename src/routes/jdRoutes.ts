@@ -29,4 +29,11 @@ router.post('/:id/resumes', upload.single('file'), jdController.uploadResumeForJ
 // POST /api/jds/:id/send-tests - Send test links to selected candidates
 router.post('/:id/send-tests', jdController.sendTestsToCandiidates);
 
+// Real-time assessment tracking routes
+router.get('/:id/tracking', authenticateUser, jdController.getAssessmentTracking);
+router.get('/candidate/:candidateId/assessment', authenticateUser, jdController.getCandidateAssessmentDetails);
+
+// Final assessment results route
+router.get('/:id/results', authenticateUser, jdController.getFinalAssessmentResults);
+
 export default router;

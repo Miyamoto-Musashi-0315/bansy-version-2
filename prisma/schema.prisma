@@ -9,9 +9,15 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-generator client {
+// Generate client to custom src path (existing consumers)
+generator client_custom {
   provider = "prisma-client-js"
   output   = "../src/generated/prisma"
+}
+
+// Standard client to node_modules for compatibility with libs using @prisma/client
+generator client {
+  provider = "prisma-client-js"
 }
 
 enum UserRole {
@@ -69,6 +75,9 @@ model Candidate {
   resume              Resume         @relation(fields: [resumeId], references: [id])
   resumeId            String
 
+  // Relation to store GitHub/webhook activity events
+  submissionEvents    SubmissionEvent[]
+
   @@unique([jobDescriptionId, resumeId]) // A person can only apply to a job once with the same resume
 }
 
@@ -101,6 +110,13 @@ model Test {
   testCases        TestCase[]
   files            TestFile[]
   submissions      Submission[]
+
+  // Webhook activity events for this test across all candidates
+  submissionEvents SubmissionEvent[]
+
+  // Archival status for post-assessment cleanup
+  repoArchived     Boolean   @default(false)
+  repoArchivedAt   DateTime?
 }
 
 model TestCase {
@@ -129,9 +145,30 @@ model Submission {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   status    String   // pending, completed, failed
-  result    Json?    // Test results and feedback
+  result    Json?    // Test results (raw)
+  feedback  Json?    // Human/LLM-friendly feedback object
   testId    String
   test      Test     @relation(fields: [testId], references: [id])
   userId    String?
   user      User?    @relation(fields: [userId], references: [id])
+
+  // Final AI or hybrid score (optional)
+  aiScore   Float?
+}
+
+///  --- NEW: GitHub / CI activity timeline ---
+model SubmissionEvent {
+  id         String    @id @default(cuid())
+  repoName   String
+  commitSha  String
+  branch     String
+  pusher     String
+  eventType  String    // push, workflow_success, issue_opened, etc.
+  receivedAt DateTime  @default(now())
+
+  // Optional relations back to Candidate & Test for convenient queries
+  candidate   Candidate? @relation(fields: [candidateId], references: [id])
+  candidateId String?
+  test        Test?      @relation(fields: [testId], references: [id])
+  testId      String?
 }

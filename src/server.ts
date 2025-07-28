@@ -10,6 +10,8 @@ import resumeRoutes from './routes/resume';
 import aiRoutes from './routes/aiRoutes';
 import githubRoutes from './routes/github.routes';
 import jdRoutes from './routes/jdRoutes';
+import submissionRoutes from './routes/submission.routes';
+import imageRoutes from './routes/image';
 
 const app = express();
 
@@ -29,6 +31,8 @@ app.use('/api/resume', resumeRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/github', githubRoutes);
 app.use('/api/jds', jdRoutes);
+app.use('/api/submissions', submissionRoutes);
+app.use('/api', imageRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -37,6 +41,10 @@ app.get('/api/health', (req, res) => {
 
 const port = process.env.PORT || 3001;
 
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-});
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(port, () => {
+    console.log(`Server running on port ${port}`);
+  });
+}
+
+export default app;

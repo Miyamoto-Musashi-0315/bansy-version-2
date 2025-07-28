@@ -133,7 +133,7 @@ class GithubService {
                 const orgResp = await this.octokit.orgs.get({
                     org: this.config.organizationName,
                 });
-                console.log('[githubService] Organization access verified:', orgResp.data.login);
+                console.log('Organization verified:', orgResp.data.login);
                 // Additional permission checks
                 try {
                     // Check if we can list repos in the org
@@ -229,20 +229,57 @@ class GithubService {
             repoName = `test-${testId.substring(0, 10)}-${shortUserId}-${Date.now()}`;
         }
         try {
-            // First, verify we can access the organization
-            const orgResp = await this.octokit.orgs.get({
-                org: this.config.organizationName,
-            });
-            console.log('Organization verified:', orgResp.data.login);
-            // Log organization details that might affect repo creation
-            console.log('Organization details:', {
-                type: orgResp.data.type,
-                plan: (_a = orgResp.data.plan) === null || _a === void 0 ? void 0 : _a.name,
-                two_factor_requirement_enabled: orgResp.data.two_factor_requirement_enabled,
-                members_can_create_repos: orgResp.data.members_can_create_repositories,
-                members_can_create_private_repos: orgResp.data.members_can_create_private_repositories,
-                members_can_create_public_repos: orgResp.data.members_can_create_public_repositories,
-            });
+            // First, check if this is an organization or user account
+            let isOrganization = true;
+            let accountInfo = null;
+            try {
+                // Try to get organization info
+                const orgResp = await this.octokit.orgs.get({
+                    org: this.config.organizationName,
+                });
+                accountInfo = orgResp.data;
+                console.log('Account type: Organization');
+                console.log('Organization verified:', orgResp.data.login);
+            }
+            catch (orgError) {
+                if (orgError.status === 404) {
+                    // Not an organization, try as user
+                    try {
+                        const userResp = await this.octokit.users.getByUsername({
+                            username: this.config.organizationName,
+                        });
+                        accountInfo = userResp.data;
+                        isOrganization = false;
+                        console.log('Account type: User');
+                        console.log('User account verified:', userResp.data.login);
+                    }
+                    catch (userError) {
+                        throw new Error(`Account '${this.config.organizationName}' not found as organization or user`);
+                    }
+                }
+                else {
+                    throw orgError;
+                }
+            }
+            // Log account details that might affect repo creation
+            if (isOrganization) {
+                console.log('Organization details:', {
+                    type: accountInfo.type,
+                    plan: (_a = accountInfo.plan) === null || _a === void 0 ? void 0 : _a.name,
+                    two_factor_requirement_enabled: accountInfo.two_factor_requirement_enabled,
+                    members_can_create_repos: accountInfo.members_can_create_repositories,
+                    members_can_create_private_repos: accountInfo.members_can_create_private_repositories,
+                    members_can_create_public_repos: accountInfo.members_can_create_public_repositories,
+                });
+            }
+            else {
+                console.log('User account details:', {
+                    type: accountInfo.type,
+                    login: accountInfo.login,
+                    name: accountInfo.name,
+                    company: accountInfo.company,
+                });
+            }
             // Check App installation details
             try {
                 // Create a fresh app JWT to get installation details
@@ -281,18 +318,34 @@ class GithubService {
             }
             // Create repository in the organization
             console.log('Attempting to create repository with params:', {
-                org: this.config.organizationName,
+                owner: this.config.organizationName,
                 name: repoName,
                 private: false,
                 auto_init: true,
+                isOrganization: isOrganization,
             });
-            const { data: repo } = await this.octokit.repos.createInOrg({
-                org: this.config.organizationName,
-                name: repoName,
-                private: false,
-                auto_init: true,
-                description: `Temporary repository for test ${testId} by user ${userId}`,
-            });
+            let repo;
+            if (isOrganization) {
+                // Create in organization
+                const response = await this.octokit.repos.createInOrg({
+                    org: this.config.organizationName,
+                    name: repoName,
+                    private: false,
+                    auto_init: true,
+                    description: `Temporary repository for test ${testId} by user ${userId}`,
+                });
+                repo = response.data;
+            }
+            else {
+                // Create for authenticated installation (works for user accounts)
+                const response = await this.octokit.repos.createForAuthenticatedUser({
+                    name: repoName,
+                    private: false,
+                    auto_init: true,
+                    description: `Temporary repository for test ${testId} by user ${userId}`,
+                });
+                repo = response.data;
+            }
             console.log('Repository created successfully:', repo.html_url);
             // If we have project files, add them to the repository
             if (projectFiles.length > 0) {
@@ -417,6 +470,102 @@ class GithubService {
         catch (error) {
             console.error('Error adding files to repository:', error);
             throw new Error(`Failed to add files to repository: ${(error === null || error === void 0 ? void 0 : error.message) || 'Unknown error'}`);
+        }
+    }
+    /**
+     * Creates GitHub Issues for the assessment project
+     */
+    async createGitHubIssues(repoName, issues) {
+        if (this.isGitHubDisabled) {
+            console.log('GitHub disabled, skipping issue creation for:', repoName);
+            return;
+        }
+        try {
+            console.log(`Creating ${issues.length} GitHub issues for repository ${repoName}`);
+            for (let index = 0; index < issues.length; index++) {
+                const issue = issues[index];
+                // Create the issue body with enhanced formatting
+                const issueBody = `
+${issue.description}
+
+## Acceptance Criteria
+- Implement the functionality described above
+- Ensure all related test cases pass
+- Follow best practices for ${issue.difficulty} level implementation
+
+## Test Cases
+This issue is validated by test case(s): ${issue.testCaseIds.map(id => `#${id + 1}`).join(', ')}
+
+## Points
+**${issue.points} points** - Difficulty: **${issue.difficulty}**
+
+## Getting Started
+1. Read the issue description carefully
+2. Check the existing codebase and tests
+3. Implement your solution
+4. Run tests to validate your implementation
+5. Push your changes to see automated test results
+
+---
+*This is an automated assessment issue. Your implementation will be evaluated automatically.*
+        `.trim();
+                // Create the issue
+                const { data: createdIssue } = await this.octokit.issues.create({
+                    owner: this.config.organizationName,
+                    repo: repoName,
+                    title: `[${issue.difficulty.toUpperCase()}] ${issue.title}`,
+                    body: issueBody,
+                    labels: [...issue.labels, issue.difficulty, 'assessment']
+                });
+                console.log(`Created issue #${createdIssue.number}: ${issue.title}`);
+            }
+            console.log(`Successfully created ${issues.length} GitHub issues`);
+        }
+        catch (error) {
+            console.error('Error creating GitHub issues:', error);
+            throw new Error(`Failed to create GitHub issues: ${(error === null || error === void 0 ? void 0 : error.message) || 'Unknown error'}`);
+        }
+    }
+    /**
+     * Enhanced createTemporaryRepo that handles workflows and issues
+     */
+    async createCandidateRepo(testId, candidateId, projectFiles = [], workflowFiles = [], githubIssues = []) {
+        console.log(`GithubService.createCandidateRepo: Starting repo creation for candidate: ${candidateId}, testId: ${testId}`);
+        console.log(`Files to commit: ${projectFiles.length} project + ${workflowFiles.length} workflow files`);
+        console.log(`Issues to create: ${githubIssues.length}`);
+        // If GitHub is disabled, return a mock repository
+        if (this.isGitHubDisabled) {
+            const mockRepoName = `candidate-${candidateId.substring(0, 8)}-test-${testId.substring(0, 8)}`;
+            const mockRepoUrl = `https://github.com/mock-org/${mockRepoName}`;
+            console.log('GitHub disabled, returning mock repository URL:', mockRepoUrl);
+            return {
+                repoUrl: mockRepoUrl,
+                cloneUrl: `${mockRepoUrl}.git`,
+            };
+        }
+        // Generate repository name for individual candidate
+        const shortCandidateId = candidateId.split('-')[0];
+        const shortTestId = testId.substring(0, 8);
+        const repoName = `candidate-${shortCandidateId}-test-${shortTestId}-${Date.now()}`;
+        try {
+            // Create the repository
+            const { repoUrl, cloneUrl } = await this.createTemporaryRepo(testId, candidateId, []);
+            // Combine all files (project files + workflow files)
+            const allFiles = [...projectFiles, ...workflowFiles];
+            // Add all files to the repository
+            if (allFiles.length > 0) {
+                await this.addFilesToRepository(repoName, allFiles);
+            }
+            // Create GitHub Issues
+            if (githubIssues.length > 0) {
+                await this.createGitHubIssues(repoName, githubIssues);
+            }
+            console.log(`Candidate repository created successfully: ${repoUrl}`);
+            return { repoUrl, cloneUrl };
+        }
+        catch (error) {
+            console.error('Error creating candidate repository:', error);
+            throw new Error(`Failed to create candidate repository: ${(error === null || error === void 0 ? void 0 : error.message) || 'Unknown error'}`);
         }
     }
     /**

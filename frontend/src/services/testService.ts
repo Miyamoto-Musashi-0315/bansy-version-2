@@ -16,15 +16,22 @@ export interface Test {
 }
 
 interface SubmissionResult {
-  id: string;
-  status: 'success' | 'failure';
-  results: Array<{
+  submissionId?: string;
+  id?: string;
+  status: 'success' | 'failure' | 'pending';
+  results?: Array<{
     testCase: number;
     passed: boolean;
     output?: string;
     error?: string;
   }>;
+  llmScore?: number;
+  ciCdScore?: number;
 }
+
+type SubmissionDetails = SubmissionResult & {
+  llmEvaluation?: unknown;
+};
 
 export const testService = {
   // Fetch a specific test by ID
@@ -42,6 +49,12 @@ export const testService = {
   // Run tests using the GitHub repository code
   async runTests(testId: string): Promise<SubmissionResult> {
     const response = await axios.post(`/api/tests/${testId}/run`);
+    return response.data;
+  },
+
+  // Fetch a submission by ID (CI + LLM results)
+  async getSubmission(submissionId: string): Promise<SubmissionDetails> {
+    const response = await axios.get(`/api/submissions/${submissionId}`);
     return response.data;
   }
 };

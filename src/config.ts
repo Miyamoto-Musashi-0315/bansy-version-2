@@ -90,7 +90,8 @@ interface Config {
 
 export const config: Config = {
   port: parseInt(process.env.PORT || '3001', 10),
-  executionServiceUrl: process.env.EXECUTION_SERVICE_URL || 'http://localhost:5000',
+  // External code-execution microservice (disabled by default)
+  executionServiceUrl: process.env.EXECUTION_SERVICE_URL || '',
   geminiApiKey: process.env.GEMINI_API_KEY || '',
   uploadDir: process.env.UPLOAD_DIR || 'uploads',
   github: {
