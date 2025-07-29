@@ -1,3 +1,41 @@
+# --- dependencies -------------------------------------------------
 node_modules
-# Keep environment variables out of version control
-.env
+frontend/node_modules/
+
+# --- build output -------------------------------------------------
+dist/
+frontend/dist/
+build/
+prisma/generated/
+
+# --- runtime / binary artefacts ----------------------------------
+uploads/
+code-server.zip
+
+# --- logs ---------------------------------------------------------
+logs/
+*.log
+
+# --- test & coverage ---------------------------------------------
+coverage/
+.nyc_output/
+*.coverage
+test_project/.pytest_cache/
+
+# --- virtual environments / caches -------------------------------
+__pycache__/
+test_project/venv/
+.cursor/
+
+# --- editors & OS clutter ----------------------------------------
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+*.sw?
+*.suo
+*.njsproj
+*.sln
+
+# --- environment secrets -----------------------------------------
+.env*

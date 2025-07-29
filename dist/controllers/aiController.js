@@ -104,17 +104,19 @@ exports.aiController = {
             // Check if test already exists
             if (jobDescription.test) {
                 console.log(`Test already exists for JD: ${jdId}, proceeding with regeneration...`);
-                // Delete the existing test and all related data to allow regeneration
-                console.log('Deleting existing test for regeneration...');
-                // First delete all related test cases to avoid foreign key constraint violations
-                await prismaClient_1.prisma.testCase.deleteMany({
-                    where: { testId: jobDescription.test.id },
-                });
-                console.log('Deleted related test cases');
-                // Now delete the test
-                await prismaClient_1.prisma.test.delete({
-                    where: { id: jobDescription.test.id },
-                });
+                const testIdToDelete = jobDescription.test.id;
+                // Delete order matters because of FK constraints.
+                // 1. Submission events linked to this test
+                await prismaClient_1.prisma.submissionEvent.deleteMany({ where: { testId: testIdToDelete } });
+                // 2. Submissions linked to this test
+                await prismaClient_1.prisma.submission.deleteMany({ where: { testId: testIdToDelete } });
+                // 3. Test files (if any)
+                await prismaClient_1.prisma.testFile.deleteMany({ where: { testId: testIdToDelete } });
+                // 4. Test cases
+                await prismaClient_1.prisma.testCase.deleteMany({ where: { testId: testIdToDelete } });
+                console.log('Deleted dependent SubmissionEvents, Submissions, TestFiles, and TestCases');
+                // 5. Finally delete the test itself
+                await prismaClient_1.prisma.test.delete({ where: { id: testIdToDelete } });
                 console.log('Existing test deleted, proceeding with new generation...');
             }
             console.log(`Creating preliminary test record for JD: ${jobDescription.title}`);
@@ -142,8 +144,8 @@ exports.aiController = {
             console.log(`Project template generated: ${projectTemplate.title}`);
             // 4. Create a GitHub repository and commit the generated project files
             console.log('Creating GitHub repository...');
-            const { repoUrl, cloneUrl } = await githubService.createTemporaryRepo(preliminaryTest.id, user.id, projectTemplate.projectFiles // Use files directly from the template
-            );
+            const { repoUrl, cloneUrl } = await githubService.createTemporaryRepo(preliminaryTest.id, user.id, projectTemplate.projectFiles, // Code files
+            projectTemplate.githubWorkflows || [], projectTemplate.githubIssues || []);
             console.log(`GitHub repository created: ${repoUrl}`);
             // 5. Persist the Test and its TestCases in two steps to avoid nested-create issues
             console.log('Updating test record with final details...');
@@ -163,11 +165,11 @@ exports.aiController = {
             if (projectTemplate.testCases.length > 0) {
                 await prismaClient_1.prisma.testCase.createMany({
                     data: projectTemplate.testCases.map(tc => {
-                        var _a;
+                        var _a, _b;
                         return ({
                             description: tc.description,
                             input: (_a = tc.input) !== null && _a !== void 0 ? _a : null,
-                            expectedOutput: tc.expectedOutput,
+                            expectedOutput: (_b = tc.expectedOutput) !== null && _b !== void 0 ? _b : '',
                             category: tc.category,
                             difficulty: tc.difficulty,
                             points: tc.points,

@@ -57,7 +57,7 @@ export function TestPage() {
         const latest = await testService.getSubmission(submission.submissionId);
         if (latest.status !== 'pending') {
           setSubmission({
-            submissionId: latest.id,
+            submissionId: latest.id ?? '',
             status: latest.status as any,
             ciCdScore: latest.ciCdScore,
             llmScore: latest.llmScore,
@@ -113,7 +113,7 @@ export function TestPage() {
       setError(null);
       const res = await testService.submitSolution(testId, {});
       setSubmission({
-        submissionId: res.submissionId,
+        submissionId: res.submissionId ?? '',
         status: res.status,
       });
     } catch (err: unknown) {

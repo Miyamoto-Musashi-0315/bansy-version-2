@@ -8,6 +8,13 @@ interface ProtectedRouteProps {
   requireHR?: boolean;
 }
 
+// Cache validation result for 5 minutes to avoid repeated API calls
+let validationCache = {
+  isValid: false,
+  timestamp: 0,
+  CACHE_DURATION: 5 * 60 * 1000 // 5 minutes
+};
+
 export const ProtectedRoute = ({ children, requireHR = false }: ProtectedRouteProps) => {
   const location = useLocation();
   const [isValidating, setIsValidating] = useState(true);
@@ -15,16 +22,40 @@ export const ProtectedRoute = ({ children, requireHR = false }: ProtectedRoutePr
 
   useEffect(() => {
     const validateSession = async () => {
+      // Quick local check first
       if (!auth.isAuthenticated()) {
         setIsValidating(false);
         setIsValid(false);
         return;
       }
 
-      // Validate the token with the backend
-      const tokenIsValid = await auth.validateToken();
-      setIsValid(tokenIsValid);
-      setIsValidating(false);
+      // Check cache first to avoid repeated API calls
+      const now = Date.now();
+      if (validationCache.timestamp + validationCache.CACHE_DURATION > now) {
+        setIsValid(validationCache.isValid);
+        setIsValidating(false);
+        return;
+      }
+
+      try {
+        // Validate the token with the backend only if cache is expired
+        const tokenIsValid = await auth.validateToken();
+        
+        // Update cache
+        validationCache = {
+          isValid: tokenIsValid,
+          timestamp: now,
+          CACHE_DURATION: validationCache.CACHE_DURATION
+        };
+        
+        setIsValid(tokenIsValid);
+      } catch (error) {
+        console.warn('Token validation failed:', error);
+        setIsValid(false);
+        validationCache.isValid = false;
+      } finally {
+        setIsValidating(false);
+      }
     };
 
     validateSession();

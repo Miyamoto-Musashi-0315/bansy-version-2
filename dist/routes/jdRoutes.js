@@ -21,4 +21,9 @@ router.delete('/:id', jdController_1.jdController.deleteJd);
 router.post('/:id/resumes', multer_1.upload.single('file'), jdController_1.jdController.uploadResumeForJd);
 // POST /api/jds/:id/send-tests - Send test links to selected candidates
 router.post('/:id/send-tests', jdController_1.jdController.sendTestsToCandiidates);
+// Real-time assessment tracking routes
+router.get('/:id/tracking', auth_1.authenticateUser, jdController_1.jdController.getAssessmentTracking);
+router.get('/candidate/:candidateId/assessment', auth_1.authenticateUser, jdController_1.jdController.getCandidateAssessmentDetails);
+// Final assessment results route
+router.get('/:id/results', auth_1.authenticateUser, jdController_1.jdController.getFinalAssessmentResults);
 exports.default = router;

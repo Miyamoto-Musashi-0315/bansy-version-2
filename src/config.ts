@@ -3,11 +3,22 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 
-// Load environment variables, ensuring that variables defined in the .env file override any existing
-// variables set in the shell. This helps avoid situations where stale shell variables (e.g. an
-// outdated GITHUB_PRIVATE_KEY_PATH) shadow the updated value in the .env file and cause confusing
-// authentication errors.
-dotenv.config({ override: true });
+// Load environment variables, prioritising a local `.env` if present. If not found, fall back to `local.env` so devs don't have to rename the file. The `override` flag ensures file values replace shell values (handy during dev).
+const defaultEnvPath = path.resolve(process.cwd(), '.env');
+const localEnvPath = path.resolve(process.cwd(), 'local.env');
+
+const chosenEnvPath = fs.existsSync(defaultEnvPath)
+  ? defaultEnvPath
+  : fs.existsSync(localEnvPath)
+  ? localEnvPath
+  : undefined;
+
+if (chosenEnvPath) {
+  dotenv.config({ path: chosenEnvPath, override: true });
+} else {
+  // Fallback: no env file found – still load env vars from the shell
+  dotenv.config({ override: true });
+}
 
 // Log environment variables (excluding sensitive ones)
 const logEnvVars = () => {

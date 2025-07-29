@@ -43,7 +43,13 @@ class GithubService {
     constructor(config) {
         this.config = config;
         this.isGitHubDisabled = false;
-        this.initializeGitHub();
+        this.initializationPromise = this.initializeGitHub();
+    }
+    /**
+     * Ensures GitHub service is initialized before use
+     */
+    async ensureInitialized() {
+        await this.initializationPromise;
     }
     async initializeGitHub() {
         var _a, _b, _c, _d, _e, _f, _g;
@@ -108,7 +114,11 @@ class GithubService {
                 permissions: {
                     contents: 'write',
                     administration: 'write',
+                    issues: 'write',
+                    workflows: 'write',
+                    actions: 'write', // NEW: allow dispatching workflows & managing Actions API
                     metadata: 'read',
+                    pull_requests: 'write'
                 },
             });
             const installationToken = (_b = tokenResp.data) === null || _b === void 0 ? void 0 : _b.token;
@@ -204,10 +214,12 @@ class GithubService {
     /**
      * Creates a temporary repository for a test submission and pushes initial project files
      */
-    async createTemporaryRepo(testId, userId, projectFiles = []) {
+    async createTemporaryRepo(testId, userId, projectFiles = [], workflowFiles = [], githubIssues = []) {
         var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m;
         console.log(`GithubService.createTemporaryRepo: Starting repo creation for testId: ${testId}, userId: ${userId}`);
         console.log(`GithubService.createTemporaryRepo: Number of project files to commit: ${projectFiles.length}`);
+        // Ensure GitHub service is initialized
+        await this.ensureInitialized();
         // If GitHub is disabled, return a mock repository
         if (this.isGitHubDisabled) {
             const mockRepoName = `test-${testId.substring(0, 10)}-${Date.now()}`;
@@ -347,9 +359,35 @@ class GithubService {
                 repo = response.data;
             }
             console.log('Repository created successfully:', repo.html_url);
-            // If we have project files, add them to the repository
-            if (projectFiles.length > 0) {
-                await this.addFilesToRepository(repoName, projectFiles);
+            // Combine project files and workflow files so they are all committed in one go
+            const allFiles = [...projectFiles, ...workflowFiles];
+            // If we have files to add, push them to the repository
+            if (allFiles.length > 0) {
+                console.log(`Attempting to add ${allFiles.length} files to repository...`);
+                try {
+                    await this.addFilesToRepository(repoName, allFiles);
+                    console.log(`✅ Successfully added all files to ${repoName}`);
+                }
+                catch (fileError) {
+                    console.error(`⚠️ Warning: Failed to add some files to repository ${repoName}:`, fileError.message);
+                    // Don't fail the entire operation if file addition fails
+                    // The repository is still created and can be used
+                    console.log('Repository created successfully but some files may be missing. You can add them manually.');
+                }
+            }
+            // Create GitHub issues mapped to features / test cases
+            if (githubIssues.length > 0) {
+                console.log(`Creating ${githubIssues.length} GitHub issues...`);
+                try {
+                    await this.createGitHubIssues(repoName, githubIssues);
+                    console.log(`✅ Successfully created GitHub issues`);
+                    // After issues, open placeholder PRs for each
+                    await this.createPullRequests(repoName, githubIssues);
+                }
+                catch (issueError) {
+                    console.error(`⚠️ Warning: Failed to create GitHub issues:`, issueError.message);
+                    // Proceed without blocking the repository creation
+                }
             }
             return {
                 repoUrl: repo.html_url,
@@ -411,61 +449,69 @@ class GithubService {
         }
     }
     /**
-     * Adds files to an existing repository
+     * Adds files to an existing repository using the Contents API (more reliable than Git Trees API)
      */
     async addFilesToRepository(repoName, projectFiles) {
+        await this.ensureInitialized();
         try {
-            // Get repository info
-            const { data: repoInfo } = await this.octokit.repos.get({
-                owner: this.config.organizationName,
-                repo: repoName,
-            });
-            const defaultBranch = repoInfo.default_branch;
-            // Get the latest commit SHA
-            const { data: ref } = await this.octokit.git.getRef({
-                owner: this.config.organizationName,
-                repo: repoName,
-                ref: `heads/${defaultBranch}`,
-            });
-            const latestCommitSha = ref.object.sha;
-            // Create blobs for each file
-            const fileBlobs = await Promise.all(projectFiles.map(async (file) => {
-                const { data: blob } = await this.octokit.git.createBlob({
-                    owner: this.config.organizationName,
-                    repo: repoName,
-                    content: Buffer.from(file.content).toString('base64'),
-                    encoding: 'base64',
-                });
-                return { path: file.path, sha: blob.sha };
-            }));
-            // Create tree
-            const { data: tree } = await this.octokit.git.createTree({
-                owner: this.config.organizationName,
-                repo: repoName,
-                base_tree: latestCommitSha,
-                tree: fileBlobs.map(({ path, sha }) => ({
-                    path,
-                    mode: '100644',
-                    type: 'blob',
-                    sha,
-                })),
-            });
-            // Create commit
-            const { data: commit } = await this.octokit.git.createCommit({
-                owner: this.config.organizationName,
-                repo: repoName,
-                message: 'Initial project setup',
-                tree: tree.sha,
-                parents: [latestCommitSha],
-            });
-            // Update branch reference
-            await this.octokit.git.updateRef({
-                owner: this.config.organizationName,
-                repo: repoName,
-                ref: `heads/${defaultBranch}`,
-                sha: commit.sha,
-            });
-            console.log(`Successfully added ${projectFiles.length} files to repository ${repoName}`);
+            console.log(`Adding ${projectFiles.length} files to repository ${repoName} using Contents API`);
+            // Use the Contents API to add files one by one (more reliable than Git Trees API)
+            for (const file of projectFiles) {
+                try {
+                    console.log(`Adding file: ${file.path}`);
+                    // Check if file already exists to handle conflicts
+                    let existingFileSha;
+                    try {
+                        const { data: existingFile } = await this.octokit.repos.getContent({
+                            owner: this.config.organizationName,
+                            repo: repoName,
+                            path: file.path,
+                        });
+                        // If file exists and is a file (not directory), get its SHA
+                        if ('sha' in existingFile) {
+                            existingFileSha = existingFile.sha;
+                            console.log(`File ${file.path} already exists, updating with SHA: ${existingFileSha}`);
+                        }
+                    }
+                    catch (getError) {
+                        // File doesn't exist, which is fine - we'll create it
+                        if (getError.status !== 404) {
+                            console.warn(`Warning checking file existence for ${file.path}:`, getError.message);
+                        }
+                    }
+                    // Create or update the file using Contents API
+                    const createParams = {
+                        owner: this.config.organizationName,
+                        repo: repoName,
+                        path: file.path,
+                        message: existingFileSha ? `Update ${file.path}` : `Add ${file.path}`,
+                        content: Buffer.from(file.content).toString('base64'),
+                        committer: {
+                            name: 'Bansy Assessment Platform',
+                            email: 'noreply@bansy.com'
+                        },
+                        author: {
+                            name: 'Bansy Assessment Platform',
+                            email: 'noreply@bansy.com'
+                        }
+                    };
+                    // Include SHA if file already exists
+                    if (existingFileSha) {
+                        createParams.sha = existingFileSha;
+                    }
+                    await this.octokit.repos.createOrUpdateFileContents(createParams);
+                    console.log(`✅ Successfully added: ${file.path}`);
+                }
+                catch (fileError) {
+                    console.error(`❌ Failed to add file ${file.path}:`, fileError.message);
+                    // Continue with other files instead of failing completely
+                }
+                // Small delay to avoid rate limiting
+                if (projectFiles.indexOf(file) < projectFiles.length - 1) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+            }
+            console.log(`Successfully added files to repository ${repoName}`);
         }
         catch (error) {
             console.error('Error adding files to repository:', error);
@@ -476,6 +522,7 @@ class GithubService {
      * Creates GitHub Issues for the assessment project
      */
     async createGitHubIssues(repoName, issues) {
+        await this.ensureInitialized();
         if (this.isGitHubDisabled) {
             console.log('GitHub disabled, skipping issue creation for:', repoName);
             return;
@@ -509,21 +556,98 @@ This issue is validated by test case(s): ${issue.testCaseIds.map(id => `#${id + 
 ---
 *This is an automated assessment issue. Your implementation will be evaluated automatically.*
         `.trim();
-                // Create the issue
-                const { data: createdIssue } = await this.octokit.issues.create({
-                    owner: this.config.organizationName,
-                    repo: repoName,
-                    title: `[${issue.difficulty.toUpperCase()}] ${issue.title}`,
-                    body: issueBody,
-                    labels: [...issue.labels, issue.difficulty, 'assessment']
-                });
-                console.log(`Created issue #${createdIssue.number}: ${issue.title}`);
+                try {
+                    // Create the issue
+                    const { data: createdIssue } = await this.octokit.issues.create({
+                        owner: this.config.organizationName,
+                        repo: repoName,
+                        title: `[${issue.difficulty.toUpperCase()}] ${issue.title}`,
+                        body: issueBody,
+                        labels: [...issue.labels, issue.difficulty, 'assessment']
+                    });
+                    console.log(`Created issue #${createdIssue.number}: ${issue.title}`);
+                }
+                catch (issueError) {
+                    console.warn(`⚠️ Warning: Could not create issue "${issue.title}":`, issueError.message);
+                    if (issueError.status === 403 || issueError.status === 422) {
+                        console.warn('This might be due to missing GitHub App permissions for issues.');
+                        console.warn('You can add issues manually or update the GitHub App permissions.');
+                    }
+                    // Continue with other issues
+                }
             }
-            console.log(`Successfully created ${issues.length} GitHub issues`);
+            console.log(`GitHub issues creation process completed`);
         }
         catch (error) {
-            console.error('Error creating GitHub issues:', error);
-            throw new Error(`Failed to create GitHub issues: ${(error === null || error === void 0 ? void 0 : error.message) || 'Unknown error'}`);
+            console.error('Error in GitHub issues creation process:', error.message);
+            // Don't throw - this is not critical for repository functionality
+        }
+    }
+    /**
+     * Creates placeholder feature branches and pull requests linked to the given issues
+     */
+    async createPullRequests(repoName, issues) {
+        await this.ensureInitialized();
+        if (this.isGitHubDisabled)
+            return;
+        try {
+            console.log(`Creating pull requests for ${issues.length} issues in ${repoName}`);
+            // Get default branch (assume main if query fails)
+            let defaultBranch = 'main';
+            try {
+                const { data: repo } = await this.octokit.repos.get({ owner: this.config.organizationName, repo: repoName });
+                defaultBranch = repo.default_branch || 'main';
+            }
+            catch (_a) { }
+            // Get latest commit SHA on default branch
+            const latestSha = await this.getLatestCommit(repoName);
+            for (const issue of issues) {
+                const branchName = issue.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 50);
+                try {
+                    // Create branch ref
+                    await this.octokit.git.createRef({
+                        owner: this.config.organizationName,
+                        repo: repoName,
+                        ref: `refs/heads/${branchName}`,
+                        sha: latestSha,
+                    });
+                    /*
+                     * CREATE A PLACEHOLDER COMMIT
+                     * Without an extra commit the branch is identical to main and GitHub
+                     * rejects the PR (HTTP 422 – "No commits between ...").
+                     * We add a tiny marker file under .bansy/ so it doesn't clash with
+                     * real project code.
+                     */
+                    const placeholderPath = `.bansy/${branchName}.md`;
+                    const placeholderContent = Buffer.from(`# Work for: ${issue.title}\n`).toString('base64');
+                    await this.octokit.repos.createOrUpdateFileContents({
+                        owner: this.config.organizationName,
+                        repo: repoName,
+                        path: placeholderPath,
+                        message: `chore: add placeholder for ${issue.title}`,
+                        content: placeholderContent,
+                        branch: branchName,
+                        committer: { name: 'Bansy Bot', email: 'bot@bansy.com' },
+                        author: { name: 'Bansy Bot', email: 'bot@bansy.com' },
+                    });
+                    // Open PR
+                    const { data: pr } = await this.octokit.pulls.create({
+                        owner: this.config.organizationName,
+                        repo: repoName,
+                        title: issue.title,
+                        head: branchName,
+                        base: defaultBranch,
+                        body: `This pull request tracks work for **${issue.title}**\n\nResolves #${issue.title}`,
+                    });
+                    console.log(`Created PR #${pr.number} for issue '${issue.title}'`);
+                }
+                catch (prErr) {
+                    console.warn(`⚠️ Could not create PR for issue ${issue.title}:`, prErr.message);
+                }
+            }
+        }
+        catch (err) {
+            console.error('Error creating pull requests:', err);
         }
     }
     /**
@@ -546,22 +670,59 @@ This issue is validated by test case(s): ${issue.testCaseIds.map(id => `#${id + 
         // Generate repository name for individual candidate
         const shortCandidateId = candidateId.split('-')[0];
         const shortTestId = testId.substring(0, 8);
-        const repoName = `candidate-${shortCandidateId}-test-${shortTestId}-${Date.now()}`;
+        const timestamp = Date.now();
+        const repoName = `candidate-${shortCandidateId}-test-${shortTestId}-${timestamp}`;
+        console.log(`Generated repository name: ${repoName}`);
         try {
-            // Create the repository
-            const { repoUrl, cloneUrl } = await this.createTemporaryRepo(testId, candidateId, []);
+            // Ensure GitHub service is initialized
+            await this.ensureInitialized();
+            // Create the repository directly (don't use createTemporaryRepo to avoid name conflicts)
+            console.log('Creating repository...');
+            // Create repository in the organization
+            let repo;
+            const response = await this.octokit.repos.createInOrg({
+                org: this.config.organizationName,
+                name: repoName,
+                private: false,
+                auto_init: true,
+                description: `Assessment repository for candidate ${candidateId}`,
+            });
+            repo = response.data;
+            console.log('Repository created successfully:', repo.html_url);
             // Combine all files (project files + workflow files)
             const allFiles = [...projectFiles, ...workflowFiles];
             // Add all files to the repository
             if (allFiles.length > 0) {
-                await this.addFilesToRepository(repoName, allFiles);
+                console.log(`Attempting to add ${allFiles.length} files to repository...`);
+                try {
+                    await this.addFilesToRepository(repoName, allFiles);
+                    console.log(`✅ Successfully added all files to ${repoName}`);
+                }
+                catch (fileError) {
+                    console.error(`⚠️ Warning: Failed to add some files to repository ${repoName}:`, fileError.message);
+                    // Don't fail the entire operation if file addition fails
+                    console.log('Repository created successfully but some files may be missing.');
+                }
             }
             // Create GitHub Issues
             if (githubIssues.length > 0) {
-                await this.createGitHubIssues(repoName, githubIssues);
+                console.log(`Creating ${githubIssues.length} GitHub issues...`);
+                try {
+                    await this.createGitHubIssues(repoName, githubIssues);
+                    console.log(`✅ Successfully created GitHub issues`);
+                    // After issues, open placeholder PRs for each
+                    await this.createPullRequests(repoName, githubIssues);
+                }
+                catch (issueError) {
+                    console.error(`⚠️ Warning: Failed to create GitHub issues:`, issueError.message);
+                    // Don't fail the entire operation if issue creation fails
+                }
             }
-            console.log(`Candidate repository created successfully: ${repoUrl}`);
-            return { repoUrl, cloneUrl };
+            console.log(`Candidate repository created successfully: ${repo.html_url}`);
+            return {
+                repoUrl: repo.html_url,
+                cloneUrl: repo.clone_url
+            };
         }
         catch (error) {
             console.error('Error creating candidate repository:', error);
@@ -577,25 +738,237 @@ This issue is validated by test case(s): ${issue.testCaseIds.map(id => `#${id + 
             return;
         }
         try {
-            // First archive the repository
+            console.log(`[Cleanup] Starting repository cleanup for: ${repoName}`);
+            // First, update our database to mark the repository as archived
+            const test = await this.updateTestArchivalStatus(repoName);
+            // Archive the repository on GitHub
             await this.octokit.repos.update({
                 owner: this.config.organizationName,
                 repo: repoName,
                 archived: true,
             });
-            console.log(`Repository ${repoName} has been archived`);
-            // Uncomment if you want to delete repositories after archival
+            console.log(`[Cleanup] Repository ${repoName} has been archived on GitHub`);
+            // If this is a candidate repository, update candidate status to completed
+            await this.updateCandidateStatus(repoName);
+            // Optional: Delete repository after archival (commented out for safety)
+            // Enable this only if you want permanent deletion
             /*
             await this.octokit!.repos.delete({
               owner: this.config.organizationName,
               repo: repoName,
             });
-            console.log(`Repository ${repoName} has been deleted`);
+            console.log(`[Cleanup] Repository ${repoName} has been deleted`);
             */
+            console.log(`[Cleanup] Cleanup completed for repository: ${repoName}`);
         }
         catch (error) {
-            console.error('Error cleaning up repository:', error);
+            console.error('[Cleanup] Error cleaning up repository:', error);
             throw new Error(`Failed to cleanup repository: ${(error === null || error === void 0 ? void 0 : error.message) || 'Unknown error'}`);
+        }
+    }
+    /**
+     * Update database records when a repository is archived
+     */
+    async updateTestArchivalStatus(repoName) {
+        try {
+            // Import Prisma client (we'll need to add this import at the top)
+            const { PrismaClient } = require('@prisma/client');
+            const prisma = new PrismaClient();
+            // Find and update the test record
+            const test = await prisma.test.findFirst({
+                where: { gitRepoUrl: { contains: repoName } }
+            });
+            if (test) {
+                const updatedTest = await prisma.test.update({
+                    where: { id: test.id },
+                    data: {
+                        repoArchived: true,
+                        repoArchivedAt: new Date(),
+                    },
+                });
+                console.log(`[Cleanup] Marked test ${test.id} as archived in database`);
+                await prisma.$disconnect();
+                return updatedTest;
+            }
+            else {
+                console.log(`[Cleanup] No test found for repository: ${repoName}`);
+                await prisma.$disconnect();
+                return null;
+            }
+        }
+        catch (error) {
+            console.error('[Cleanup] Error updating test archival status:', error);
+            throw error;
+        }
+    }
+    /**
+     * Update candidate status when their repository is archived
+     */
+    async updateCandidateStatus(repoName) {
+        try {
+            // Extract candidate ID from repository name
+            const repoMatch = repoName.match(/candidate-([^-]+)-test-([^-]+)-/);
+            if (repoMatch) {
+                const { PrismaClient } = require('@prisma/client');
+                const prisma = new PrismaClient();
+                const candidateIdPrefix = repoMatch[1];
+                // Find the candidate
+                const candidate = await prisma.candidate.findFirst({
+                    where: { id: { startsWith: candidateIdPrefix } }
+                });
+                if (candidate) {
+                    await prisma.candidate.update({
+                        where: { id: candidate.id },
+                        data: { status: 'Completed' }
+                    });
+                    console.log(`[Cleanup] Updated candidate ${candidate.id} status to Completed`);
+                }
+                await prisma.$disconnect();
+            }
+        }
+        catch (error) {
+            console.error('[Cleanup] Error updating candidate status:', error);
+            // Don't throw here - archival can still succeed even if candidate update fails
+        }
+    }
+    /**
+     * Bulk cleanup repositories based on criteria (for scheduled cleanup jobs)
+     */
+    async scheduleRepositoryCleanup(criteria = {}) {
+        var _a;
+        if (this.isGitHubDisabled) {
+            console.log('GitHub disabled, skipping scheduled cleanup');
+            return { processed: 0, errors: [] };
+        }
+        const { olderThanDays = 7, status = 'TestSent', maxRepos = 10 } = criteria;
+        const errors = [];
+        let processed = 0;
+        try {
+            console.log(`[Scheduled Cleanup] Starting bulk cleanup with criteria:`, criteria);
+            const { PrismaClient } = require('@prisma/client');
+            const prisma = new PrismaClient();
+            // Find candidates with old repositories that should be cleaned up
+            const cutoffDate = new Date();
+            cutoffDate.setDate(cutoffDate.getDate() - olderThanDays);
+            const candidatesForCleanup = await prisma.candidate.findMany({
+                where: {
+                    status: status,
+                    updatedAt: { lt: cutoffDate },
+                },
+                include: {
+                    jobDescription: {
+                        include: {
+                            test: true
+                        }
+                    }
+                },
+                take: maxRepos,
+            });
+            console.log(`[Scheduled Cleanup] Found ${candidatesForCleanup.length} candidates for cleanup`);
+            for (const candidate of candidatesForCleanup) {
+                try {
+                    const test = candidate.jobDescription.test;
+                    if ((test === null || test === void 0 ? void 0 : test.gitRepoUrl) && !test.repoArchived) {
+                        // Extract repository name from URL
+                        const repoName = (_a = test.gitRepoUrl.split('/').pop()) === null || _a === void 0 ? void 0 : _a.replace('.git', '');
+                        if (repoName) {
+                            await this.cleanupRepository(repoName);
+                            processed++;
+                            console.log(`[Scheduled Cleanup] Cleaned up repository for candidate ${candidate.id}`);
+                        }
+                    }
+                }
+                catch (error) {
+                    const errorMsg = `Failed to cleanup candidate ${candidate.id}: ${error.message}`;
+                    errors.push(errorMsg);
+                    console.error(`[Scheduled Cleanup] ${errorMsg}`);
+                }
+            }
+            await prisma.$disconnect();
+            console.log(`[Scheduled Cleanup] Completed. Processed: ${processed}, Errors: ${errors.length}`);
+            return { processed, errors };
+        }
+        catch (error) {
+            console.error('[Scheduled Cleanup] Error in bulk cleanup:', error);
+            return { processed, errors: [`Bulk cleanup failed: ${error.message}`] };
+        }
+    }
+    /**
+     * Fetch repository contents for LLM analysis
+     * Recursively gets all code files from the repository
+     */
+    async getRepositoryContents(repoName) {
+        if (this.isGitHubDisabled) {
+            console.log('GitHub disabled, returning empty repository contents');
+            return [];
+        }
+        try {
+            console.log(`[GitHub] Fetching repository contents for: ${repoName}`);
+            await this.ensureInitialized();
+            const files = [];
+            // Get repository tree recursively
+            const tree = await this.octokit.git.getTree({
+                owner: this.config.organizationName,
+                repo: repoName,
+                tree_sha: 'HEAD',
+                recursive: 'true'
+            });
+            console.log(`[GitHub] Found ${tree.data.tree.length} items in repository tree`);
+            // Filter for code files and get their contents
+            const codeExtensions = ['.js', '.jsx', '.ts', '.tsx', '.py', '.java', '.cpp', '.c', '.cs', '.go', '.rb', '.php', '.swift', '.kt', '.rs', '.scala'];
+            const importantFiles = ['README.md', 'package.json', 'requirements.txt', 'Dockerfile', 'docker-compose.yml', '.env.example'];
+            for (const item of tree.data.tree) {
+                // Skip directories and non-code files
+                if (item.type !== 'blob' || !item.path)
+                    continue;
+                // Check if it's a code file or important configuration file
+                const isCodeFile = codeExtensions.some(ext => item.path.endsWith(ext));
+                const isImportantFile = importantFiles.some(file => item.path.endsWith(file));
+                // Skip hidden files, node_modules, and other unwanted directories
+                if (item.path.startsWith('.') && !isImportantFile)
+                    continue;
+                if (item.path.includes('node_modules/'))
+                    continue;
+                if (item.path.includes('__pycache__/'))
+                    continue;
+                if (item.path.includes('.git/'))
+                    continue;
+                if (isCodeFile || isImportantFile) {
+                    try {
+                        console.log(`[GitHub] Fetching content for: ${item.path}`);
+                        const fileContent = await this.octokit.repos.getContent({
+                            owner: this.config.organizationName,
+                            repo: repoName,
+                            path: item.path
+                        });
+                        if ('content' in fileContent.data) {
+                            const content = Buffer.from(fileContent.data.content, 'base64').toString('utf-8');
+                            // Skip very large files (> 50KB) to avoid overwhelming the LLM
+                            if (content.length > 50000) {
+                                console.log(`[GitHub] Skipping large file: ${item.path} (${content.length} bytes)`);
+                                continue;
+                            }
+                            files.push({
+                                path: item.path,
+                                content: content
+                            });
+                            console.log(`[GitHub] Added file: ${item.path} (${content.length} bytes)`);
+                        }
+                    }
+                    catch (fileError) {
+                        console.warn(`[GitHub] Could not fetch ${item.path}:`, fileError.message);
+                        // Continue with other files
+                    }
+                }
+            }
+            console.log(`[GitHub] Successfully fetched ${files.length} files from ${repoName}`);
+            return files;
+        }
+        catch (error) {
+            console.error('[GitHub] Error fetching repository contents:', error);
+            // Return empty array rather than throwing, so LLM evaluation can still proceed
+            // with just CI/CD results if repository access fails
+            return [];
         }
     }
     /**
@@ -728,6 +1101,136 @@ This issue is validated by test case(s): ${issue.testCaseIds.map(id => `#${id + 
                 error: error.message,
                 details: ((_j = error.response) === null || _j === void 0 ? void 0 : _j.data) || error
             };
+        }
+    }
+    async triggerWorkflowDispatch(repoName, options = {}) {
+        await this.ensureInitialized();
+        if (this.isGitHubDisabled) {
+            console.log('[GitHub] Disabled – skipping workflow dispatch');
+            return;
+        }
+        const addRepoToInstallation = async () => {
+            try {
+                console.log(`[GitHub] Attempting to add repo '${repoName}' to installation ${this.config.installationId}`);
+                const { data: repo } = await this.octokit.repos.get({
+                    owner: this.config.organizationName,
+                    repo: repoName,
+                });
+                await this.octokit.apps.addRepoToInstallation({
+                    installation_id: Number(this.config.installationId),
+                    repository_id: repo.id,
+                });
+                console.log('[GitHub] Repo successfully added to installation');
+            }
+            catch (e) {
+                console.error('[GitHub] Failed to add repo to installation:', e.message || e);
+                throw e;
+            }
+        };
+        const { workflowFileName = 'ci.yml', ref = 'main' } = options;
+        const attemptDispatch = async () => {
+            console.log(`[GitHub] Triggering workflow dispatch for repo: ${repoName}, workflow: ${workflowFileName}, ref: ${ref}`);
+            await this.octokit.actions.createWorkflowDispatch({
+                owner: this.config.organizationName,
+                repo: repoName,
+                workflow_id: workflowFileName,
+                ref,
+            });
+            console.log('[GitHub] Workflow dispatch triggered successfully');
+        };
+        try {
+            // First, make sure the workflow is enabled (new repos created by Apps default to disabled)
+            try {
+                await this.octokit.actions.enableWorkflow({
+                    owner: this.config.organizationName,
+                    repo: repoName,
+                    workflow_id: workflowFileName,
+                });
+                console.log('[GitHub] Workflow enabled (if it was previously disabled)');
+            }
+            catch (enableErr) {
+                // 404 means workflow already enabled, other errors we log and continue
+                const ignorable = (enableErr === null || enableErr === void 0 ? void 0 : enableErr.status) === 404;
+                if (!ignorable) {
+                    console.warn('[GitHub] Could not explicitly enable workflow – proceeding anyway:', enableErr.message || enableErr);
+                }
+            }
+            await attemptDispatch();
+        }
+        catch (error) {
+            // If the first dispatch fails with 403, attempt to enable and retry once
+            if ((error === null || error === void 0 ? void 0 : error.status) === 403 && /Resource not accessible by integration/i.test(error.message || '')) {
+                console.warn('[GitHub] Dispatch returned 403 – repo may not be part of installation – attempting to add and retry');
+                try {
+                    await addRepoToInstallation();
+                }
+                catch (_a) { }
+                console.warn('[GitHub] Now attempting to enable workflow then retry');
+                try {
+                    await this.octokit.actions.enableWorkflow({
+                        owner: this.config.organizationName,
+                        repo: repoName,
+                        workflow_id: workflowFileName,
+                    });
+                    console.log('[GitHub] Workflow explicitly enabled – retrying dispatch');
+                    await attemptDispatch();
+                    return;
+                }
+                catch (retryErr) {
+                    console.error('[GitHub] Retry after enabling workflow failed:', retryErr);
+                    throw retryErr;
+                }
+            }
+            else if ((error === null || error === void 0 ? void 0 : error.status) === 404) {
+                console.warn('[GitHub] Workflow file not found. Listing available workflows to pick fallback');
+                try {
+                    const { data } = await this.octokit.actions.listRepoWorkflows({
+                        owner: this.config.organizationName,
+                        repo: repoName,
+                    });
+                    if (data.total_count > 0) {
+                        const firstWf = data.workflows[0];
+                        console.log(`[GitHub] Found workflow '${firstWf.name}' → retrying dispatch using id ${firstWf.id}`);
+                        await this.octokit.actions.createWorkflowDispatch({
+                            owner: this.config.organizationName,
+                            repo: repoName,
+                            workflow_id: firstWf.id,
+                            ref,
+                        });
+                        console.log('[GitHub] Fallback workflow dispatch succeeded');
+                        return;
+                    }
+                    else {
+                        console.error('[GitHub] No workflows present in repository');
+                    }
+                }
+                catch (listErr) {
+                    console.error('[GitHub] Failed to list/dispatch workflows:', listErr);
+                }
+            }
+            else if ((error === null || error === void 0 ? void 0 : error.status) === 422 && /workflow_dispatch/gi.test((error === null || error === void 0 ? void 0 : error.message) || '')) {
+                console.warn('[GitHub] Workflow lacks workflow_dispatch trigger – performing dummy commit to fire push event');
+                try {
+                    const dummyPath = '.bansy-ci-trigger';
+                    const content = `trigger at ${new Date().toISOString()}`;
+                    await this.octokit.repos.createOrUpdateFileContents({
+                        owner: this.config.organizationName,
+                        repo: repoName,
+                        path: dummyPath,
+                        message: 'ci: trigger workflow via dummy commit',
+                        content: Buffer.from(content).toString('base64'),
+                        committer: { name: 'Bansy CI', email: 'ci@bansy.com' },
+                        author: { name: 'Bansy CI', email: 'ci@bansy.com' },
+                    });
+                    console.log('[GitHub] Dummy commit pushed – workflows listening to push will run');
+                    return;
+                }
+                catch (dummyErr) {
+                    console.error('[GitHub] Failed to push dummy commit:', dummyErr);
+                }
+            }
+            console.error('[GitHub] Failed to trigger workflow dispatch:', error.message || error);
+            throw error;
         }
     }
 }

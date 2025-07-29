@@ -150,9 +150,9 @@ export function TestEditor({
       setTestResults({
         success: result.status === 'success',
         results: {
-          passed: result.results.filter(r => r.passed).length,
-          failed: result.results.filter(r => !r.passed).length,
-          tests: result.results.map((r, i) => ({
+          passed: result.results?.filter(r => r.passed).length ?? 0,
+          failed: result.results?.filter(r => !r.passed).length ?? 0,
+          tests: (result.results ?? []).map((r, i) => ({
             name: testCases[i]?.description || `Test ${i + 1}`,
             passed: r.passed,
             output: r.output || r.error || ''

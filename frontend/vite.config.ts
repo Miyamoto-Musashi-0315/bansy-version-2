@@ -13,4 +13,30 @@ export default defineConfig({
       },
     },
   },
+  // Performance optimizations
+  optimizeDeps: {
+    include: [
+      'react',
+      'react-dom',
+      'react-router-dom',
+      '@mantine/core',
+      '@mantine/hooks',
+      '@mantine/form',
+      'axios'
+    ],
+    exclude: ['@tabler/icons-react']
+  },
+  build: {
+    target: 'esnext',
+    minify: 'esbuild',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          router: ['react-router-dom'],
+          mantine: ['@mantine/core', '@mantine/hooks', '@mantine/form'],
+        },
+      },
+    },
+  },
 })

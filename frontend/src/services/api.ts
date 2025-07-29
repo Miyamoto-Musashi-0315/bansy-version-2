@@ -4,8 +4,15 @@ import { logger } from '../utils/logger';
 
 // Resolve the base API URL. If the environment variable already includes the
 // `/api` segment we use it as-is, otherwise we append it so that relative paths
-// like `/jds` correctly resolve to `/api/jds` on the backend.
-const rawBaseUrl = (import.meta.env.VITE_API_URL as string | undefined) || 'http://localhost:3001/api';
+// like `/jds` correctly resolve to `/api/jds` on the backend.  If the env var is
+// not provided we fall back to `window.location.origin`, which automatically
+// matches the current protocol (http vs https) and host, eliminating cross-
+// scheme issues that cause long connection delays when the page is served over
+// HTTPS but the API URL points to plain HTTP.
+
+const fallbackOrigin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001';
+const rawBaseUrl = (import.meta.env.VITE_API_URL as string | undefined) || fallbackOrigin;
+
 const baseURL = rawBaseUrl.endsWith('/api') ? rawBaseUrl : `${rawBaseUrl.replace(/\/+$/, '')}/api`;
 
 export const api = axios.create({

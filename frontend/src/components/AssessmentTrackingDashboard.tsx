@@ -150,7 +150,7 @@ const AssessmentTrackingDashboard: React.FC<AssessmentTrackingProps> = ({ jdId }
     return (
       <Container>
         <Center style={{ height: 400 }}>
-          <Stack align="center" spacing="md">
+          <Stack align="center" gap="md">
             <Loader size="lg" />
             <Text>Loading assessment tracking data...</Text>
           </Stack>
@@ -256,7 +256,7 @@ const AssessmentTrackingDashboard: React.FC<AssessmentTrackingProps> = ({ jdId }
                   {trackingData.candidates.map((candidate) => (
                     <Table.Tr key={candidate.id}>
                       <Table.Td>
-                        <Stack spacing={2}>
+                        <Stack gap={2}>
                           <Text fw={500}>{candidate.email}</Text>
                           <Text size="xs" c="dimmed">
                             Score: {candidate.suitabilityScore?.toFixed(1) || 'N/A'}
@@ -269,7 +269,7 @@ const AssessmentTrackingDashboard: React.FC<AssessmentTrackingProps> = ({ jdId }
                         </Badge>
                       </Table.Td>
                       <Table.Td>
-                        <Stack spacing={4}>
+                        <Stack gap={4}>
                           <Progress 
                             value={candidate.progressPercentage} 
                             size="sm" 
@@ -279,7 +279,7 @@ const AssessmentTrackingDashboard: React.FC<AssessmentTrackingProps> = ({ jdId }
                         </Stack>
                       </Table.Td>
                       <Table.Td>
-                        <Group spacing={8}>
+                        <Group gap={8}>
                           <Tooltip label="Total Events">
                             <Badge variant="outline" size="xs">
                               {candidate.activity.totalEvents}
@@ -369,16 +369,16 @@ const AssessmentTrackingDashboard: React.FC<AssessmentTrackingProps> = ({ jdId }
               </Center>
             }
           />
-          <Stack spacing={8}>
-            <Group spacing={8}>
+          <Stack gap={8}>
+            <Group gap={8}>
               <Badge color="green" variant="light">Completed</Badge>
               <Text size="sm">{trackingData.overview.completed} candidates</Text>
             </Group>
-            <Group spacing={8}>
+            <Group gap={8}>
               <Badge color="yellow" variant="light">In Progress</Badge>
               <Text size="sm">{trackingData.overview.inProgress} candidates</Text>
             </Group>
-            <Group spacing={8}>
+            <Group gap={8}>
               <Badge color="blue" variant="light">Test Sent</Badge>
               <Text size="sm">{trackingData.overview.testsSent - trackingData.overview.inProgress - trackingData.overview.completed} candidates</Text>
             </Group>

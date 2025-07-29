@@ -396,4 +396,417 @@ exports.jdController = {
             res.status(500).json({ error: 'Failed to create individual repositories for candidates' });
         }
     },
+    /**
+     * Get real-time assessment tracking data for a Job Description
+     */
+    async getAssessmentTracking(req, res) {
+        var _a;
+        const { id: jdId } = req.params;
+        const user = req.user;
+        if (!user) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+        try {
+            console.log(`[Assessment Tracking] Fetching tracking data for JD: ${jdId}`);
+            // Get the Job Description with all related data
+            const jobDescription = await prismaClient_1.prisma.jobDescription.findUnique({
+                where: { id: jdId },
+                include: {
+                    test: {
+                        include: {
+                            submissions: {
+                                include: {
+                                    user: true
+                                }
+                            },
+                            submissionEvents: {
+                                include: {
+                                    candidate: {
+                                        include: {
+                                            resume: true
+                                        }
+                                    }
+                                },
+                                orderBy: {
+                                    receivedAt: 'desc'
+                                }
+                            }
+                        }
+                    },
+                    candidates: {
+                        include: {
+                            resume: true,
+                            submissionEvents: {
+                                orderBy: {
+                                    receivedAt: 'desc'
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            if (!jobDescription) {
+                return res.status(404).json({ error: 'Job Description not found.' });
+            }
+            // Calculate real-time tracking metrics
+            const trackingData = {
+                overview: {
+                    totalCandidates: jobDescription.candidates.length,
+                    testsSent: jobDescription.candidates.filter(c => c.status === 'TestSent' || c.status === 'InProgress' || c.status === 'Completed').length,
+                    inProgress: jobDescription.candidates.filter(c => c.status === 'InProgress').length,
+                    completed: jobDescription.candidates.filter(c => c.status === 'Completed').length,
+                    avgSuitabilityScore: jobDescription.candidates.reduce((sum, c) => sum + (c.suitabilityScore || 0), 0) / jobDescription.candidates.length || 0
+                },
+                candidates: jobDescription.candidates.map(candidate => {
+                    // Get latest activity from submission events
+                    const latestEvent = candidate.submissionEvents[0];
+                    const totalEvents = candidate.submissionEvents.length;
+                    const pushEvents = candidate.submissionEvents.filter(e => e.eventType === 'push').length;
+                    const workflowEvents = candidate.submissionEvents.filter(e => e.eventType.startsWith('workflow_')).length;
+                    const lastActivityAt = (latestEvent === null || latestEvent === void 0 ? void 0 : latestEvent.receivedAt) || candidate.updatedAt;
+                    // Calculate progress percentage based on activity
+                    let progressPercentage = 0;
+                    if (candidate.status === 'TestSent') {
+                        progressPercentage = 10; // Just sent
+                    }
+                    else if (candidate.status === 'InProgress') {
+                        // Base progress of 25% for starting, plus additional based on activity
+                        progressPercentage = 25 + Math.min(50, pushEvents * 10); // Up to 75% for activity
+                    }
+                    else if (candidate.status === 'Completed') {
+                        progressPercentage = 100;
+                    }
+                    return {
+                        id: candidate.id,
+                        email: candidate.resume.email,
+                        status: candidate.status,
+                        suitabilityScore: candidate.suitabilityScore,
+                        progressPercentage,
+                        activity: {
+                            totalEvents,
+                            pushEvents,
+                            workflowEvents,
+                            lastActivityAt,
+                            timeElapsed: lastActivityAt ? Date.now() - new Date(lastActivityAt).getTime() : null
+                        },
+                        timeline: candidate.submissionEvents.slice(0, 10).map(event => ({
+                            type: event.eventType,
+                            timestamp: event.receivedAt,
+                            details: {
+                                repoName: event.repoName,
+                                branch: event.branch,
+                                pusher: event.pusher
+                            }
+                        }))
+                    };
+                }),
+                recentActivity: ((_a = jobDescription.test) === null || _a === void 0 ? void 0 : _a.submissionEvents.slice(0, 20).map(event => {
+                    var _a, _b;
+                    return ({
+                        type: event.eventType,
+                        timestamp: event.receivedAt,
+                        candidate: event.candidate ? {
+                            id: event.candidate.id,
+                            email: ((_a = event.candidate.resume) === null || _a === void 0 ? void 0 : _a.email) || 'Unknown'
+                        } : null,
+                        details: {
+                            repoName: event.repoName,
+                            branch: event.branch,
+                            pusher: event.pusher,
+                            commitSha: ((_b = event.commitSha) === null || _b === void 0 ? void 0 : _b.substring(0, 7)) || 'N/A'
+                        }
+                    });
+                })) || []
+            };
+            console.log(`[Assessment Tracking] Returning tracking data for ${trackingData.overview.totalCandidates} candidates`);
+            res.json(trackingData);
+        }
+        catch (error) {
+            console.error('[Assessment Tracking] Error fetching tracking data:', error);
+            res.status(500).json({ error: 'Failed to fetch assessment tracking data' });
+        }
+    },
+    /**
+     * Get detailed candidate assessment data
+     */
+    async getCandidateAssessmentDetails(req, res) {
+        var _a, _b, _c;
+        const { candidateId } = req.params;
+        const user = req.user;
+        if (!user) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+        try {
+            console.log(`[Candidate Assessment] Fetching details for candidate: ${candidateId}`);
+            const candidate = await prismaClient_1.prisma.candidate.findUnique({
+                where: { id: candidateId },
+                include: {
+                    resume: true,
+                    jobDescription: {
+                        include: {
+                            test: {
+                                include: {
+                                    submissions: {
+                                        where: {
+                                        // Find submissions that might be related to this candidate
+                                        // Since submissions don't directly link to candidates, we'll get all and filter
+                                        },
+                                        orderBy: {
+                                            createdAt: 'desc'
+                                        }
+                                    },
+                                    testCases: true
+                                }
+                            }
+                        }
+                    },
+                    submissionEvents: {
+                        orderBy: {
+                            receivedAt: 'desc'
+                        }
+                    }
+                }
+            });
+            if (!candidate) {
+                return res.status(404).json({ error: 'Candidate not found' });
+            }
+            // Find repository name pattern for this candidate
+            const candidateIdPrefix = candidate.id.split('-')[0];
+            const testIdPrefix = ((_a = candidate.jobDescription.test) === null || _a === void 0 ? void 0 : _a.id.substring(0, 8)) || '';
+            // Get CI/CD results from submissions (40% component)
+            const cicdSubmission = (_b = candidate.jobDescription.test) === null || _b === void 0 ? void 0 : _b.submissions.find(s => s.result &&
+                typeof s.result === 'object' &&
+                'repoName' in s.result &&
+                typeof s.result.repoName === 'string' &&
+                s.result.repoName.includes(candidateIdPrefix));
+            // Type-safe access to submission result
+            const submissionResult = cicdSubmission === null || cicdSubmission === void 0 ? void 0 : cicdSubmission.result;
+            // Calculate assessment metrics
+            const assessmentDetails = {
+                candidate: {
+                    id: candidate.id,
+                    email: candidate.resume.email,
+                    status: candidate.status,
+                    suitabilityScore: candidate.suitabilityScore,
+                    suitabilityAnalysis: candidate.suitabilityAnalysis
+                },
+                progress: {
+                    currentPhase: candidate.status,
+                    timeElapsed: Date.now() - new Date(candidate.createdAt).getTime(),
+                    lastActivity: ((_c = candidate.submissionEvents[0]) === null || _c === void 0 ? void 0 : _c.receivedAt) || candidate.updatedAt
+                },
+                scores: {
+                    resumeScore: candidate.suitabilityScore || 0, // Initial resume score
+                    cicdScore: (submissionResult === null || submissionResult === void 0 ? void 0 : submissionResult.cicdScore) || null, // 40% component
+                    llmScore: (submissionResult === null || submissionResult === void 0 ? void 0 : submissionResult.llmScore) || null, // 60% component (to be implemented)
+                    totalScore: (submissionResult === null || submissionResult === void 0 ? void 0 : submissionResult.totalScore) || null // Combined score
+                },
+                activity: {
+                    totalEvents: candidate.submissionEvents.length,
+                    eventBreakdown: candidate.submissionEvents.reduce((acc, event) => {
+                        acc[event.eventType] = (acc[event.eventType] || 0) + 1;
+                        return acc;
+                    }, {}),
+                    timeline: candidate.submissionEvents.map(event => {
+                        var _a;
+                        return ({
+                            type: event.eventType,
+                            timestamp: event.receivedAt,
+                            details: {
+                                repoName: event.repoName,
+                                branch: event.branch,
+                                pusher: event.pusher,
+                                commitSha: ((_a = event.commitSha) === null || _a === void 0 ? void 0 : _a.substring(0, 7)) || 'N/A'
+                            }
+                        });
+                    })
+                },
+                testResults: cicdSubmission ? {
+                    status: cicdSubmission.status,
+                    submittedAt: cicdSubmission.createdAt,
+                    results: cicdSubmission.result
+                } : null
+            };
+            console.log(`[Candidate Assessment] Returning details for candidate: ${candidate.resume.email}`);
+            res.json(assessmentDetails);
+        }
+        catch (error) {
+            console.error('[Candidate Assessment] Error fetching candidate details:', error);
+            res.status(500).json({ error: 'Failed to fetch candidate assessment details' });
+        }
+    },
+    /**
+     * Get final assessment results for completed candidates (Milestone 9.7)
+     */
+    async getFinalAssessmentResults(req, res) {
+        const { id: jdId } = req.params;
+        const user = req.user;
+        if (!user) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+        try {
+            console.log(`[Final Assessment] Fetching results for JD: ${jdId}`);
+            const jobDescription = await prismaClient_1.prisma.jobDescription.findUnique({
+                where: { id: jdId },
+                include: {
+                    test: {
+                        include: {
+                            submissions: {
+                                where: {
+                                    status: 'completed',
+                                    aiScore: { not: null }
+                                },
+                                include: {
+                                    user: true
+                                },
+                                orderBy: {
+                                    aiScore: 'desc' // Order by highest score first
+                                }
+                            }
+                        }
+                    },
+                    candidates: {
+                        where: {
+                            status: 'Completed'
+                        },
+                        include: {
+                            resume: true
+                        }
+                    }
+                }
+            });
+            if (!jobDescription) {
+                return res.status(404).json({ error: 'Job Description not found.' });
+            }
+            // Process assessment results for each completed candidate
+            const assessmentResults = await Promise.all(jobDescription.candidates.map(async (candidate) => {
+                var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r;
+                // Find the corresponding submission with AI evaluation
+                const submission = (_a = jobDescription.test) === null || _a === void 0 ? void 0 : _a.submissions.find(s => {
+                    var _a;
+                    const submissionResult = s.result;
+                    return (_a = submissionResult === null || submissionResult === void 0 ? void 0 : submissionResult.repoName) === null || _a === void 0 ? void 0 : _a.includes(candidate.id.split('-')[0]);
+                });
+                if (!submission || !submission.result) {
+                    return {
+                        candidate: {
+                            id: candidate.id,
+                            email: candidate.resume.email,
+                            suitabilityScore: candidate.suitabilityScore
+                        },
+                        status: 'incomplete',
+                        message: 'Assessment not completed'
+                    };
+                }
+                const result = submission.result;
+                const feedback = submission.feedback;
+                return {
+                    candidate: {
+                        id: candidate.id,
+                        email: candidate.resume.email,
+                        suitabilityScore: candidate.suitabilityScore,
+                        appliedAt: candidate.createdAt
+                    },
+                    assessment: {
+                        finalScore: result.totalScore,
+                        grade: result.grade,
+                        recommendation: result.recommendation,
+                        completedAt: submission.createdAt
+                    },
+                    scores: {
+                        resume: candidate.suitabilityScore || 0,
+                        cicd: result.cicdScore || 0,
+                        llm: result.llmScore || 0,
+                        total: result.totalScore || 0
+                    },
+                    breakdown: {
+                        codeQuality: ((_c = (_b = result.llmEvaluation) === null || _b === void 0 ? void 0 : _b.breakdown) === null || _c === void 0 ? void 0 : _c.codeQuality) || null,
+                        architecture: ((_e = (_d = result.llmEvaluation) === null || _d === void 0 ? void 0 : _d.breakdown) === null || _e === void 0 ? void 0 : _e.architecture) || null,
+                        innovation: ((_g = (_f = result.llmEvaluation) === null || _f === void 0 ? void 0 : _f.breakdown) === null || _g === void 0 ? void 0 : _g.innovation) || null,
+                        bestPractices: ((_j = (_h = result.llmEvaluation) === null || _h === void 0 ? void 0 : _h.breakdown) === null || _j === void 0 ? void 0 : _j.bestPractices) || null,
+                        performance: ((_l = (_k = result.llmEvaluation) === null || _k === void 0 ? void 0 : _k.breakdown) === null || _l === void 0 ? void 0 : _l.performance) || null,
+                        security: ((_o = (_m = result.llmEvaluation) === null || _m === void 0 ? void 0 : _m.breakdown) === null || _o === void 0 ? void 0 : _o.security) || null
+                    },
+                    feedback: {
+                        summary: (feedback === null || feedback === void 0 ? void 0 : feedback.summary) || ((_p = result.finalAssessment) === null || _p === void 0 ? void 0 : _p.summary),
+                        strengths: (feedback === null || feedback === void 0 ? void 0 : feedback.strengths) || ((_q = result.llmEvaluation) === null || _q === void 0 ? void 0 : _q.strengths) || [],
+                        improvements: (feedback === null || feedback === void 0 ? void 0 : feedback.improvements) || ((_r = result.llmEvaluation) === null || _r === void 0 ? void 0 : _r.improvements) || []
+                    },
+                    status: 'completed'
+                };
+            }));
+            // Calculate summary statistics
+            const completedAssessments = assessmentResults.filter(r => r.status === 'completed' && r.scores && r.assessment);
+            const avgScore = completedAssessments.reduce((sum, r) => { var _a; return sum + (((_a = r.scores) === null || _a === void 0 ? void 0 : _a.total) || 0); }, 0) / completedAssessments.length || 0;
+            const gradeDistribution = completedAssessments.reduce((acc, r) => {
+                var _a;
+                const grade = (_a = r.assessment) === null || _a === void 0 ? void 0 : _a.grade;
+                if (grade) {
+                    acc[grade] = (acc[grade] || 0) + 1;
+                }
+                return acc;
+            }, {});
+            const results = {
+                overview: {
+                    position: jobDescription.title,
+                    totalCandidates: jobDescription.candidates.length,
+                    completedAssessments: completedAssessments.length,
+                    averageScore: Math.round(avgScore * 10) / 10,
+                    gradeDistribution,
+                    assessmentDate: new Date().toISOString()
+                },
+                candidates: assessmentResults,
+                topPerformers: completedAssessments
+                    .filter(r => r.scores && r.assessment)
+                    .sort((a, b) => { var _a, _b; return (((_a = b.scores) === null || _a === void 0 ? void 0 : _a.total) || 0) - (((_b = a.scores) === null || _b === void 0 ? void 0 : _b.total) || 0); })
+                    .slice(0, 5), // Top 5 candidates
+                insights: {
+                    strongestArea: findStrongestArea(completedAssessments),
+                    commonWeaknesses: findCommonWeaknesses(completedAssessments),
+                    recommendedHires: completedAssessments.filter(r => { var _a, _b; return ((_a = r.assessment) === null || _a === void 0 ? void 0 : _a.recommendation) === 'Strong Hire' || ((_b = r.assessment) === null || _b === void 0 ? void 0 : _b.recommendation) === 'Hire'; }).length
+                }
+            };
+            console.log(`[Final Assessment] Returning results for ${completedAssessments.length} completed assessments`);
+            res.json(results);
+        }
+        catch (error) {
+            console.error('[Final Assessment] Error fetching results:', error);
+            res.status(500).json({ error: 'Failed to fetch final assessment results' });
+        }
+    }
 };
+/**
+ * Helper function to find the strongest technical area across candidates
+ */
+function findStrongestArea(assessments) {
+    const areas = ['codeQuality', 'architecture', 'innovation', 'bestPractices', 'performance', 'security'];
+    const areaAverages = areas.map(area => {
+        const scores = assessments
+            .map(a => { var _a; return ((_a = a.breakdown[area]) === null || _a === void 0 ? void 0 : _a.score) || 0; })
+            .filter(score => score > 0);
+        const average = scores.reduce((sum, score) => sum + score, 0) / scores.length || 0;
+        return { area, average };
+    });
+    const strongest = areaAverages.reduce((max, current) => current.average > max.average ? current : max);
+    return strongest.area;
+}
+/**
+ * Helper function to find common weaknesses across candidates
+ */
+function findCommonWeaknesses(assessments) {
+    const allImprovements = assessments.flatMap(a => a.feedback.improvements || []);
+    const improvementCounts = {};
+    allImprovements.forEach(improvement => {
+        // Simple keyword matching for common themes
+        const keywords = ['error handling', 'testing', 'documentation', 'security', 'performance', 'architecture'];
+        keywords.forEach(keyword => {
+            if (improvement.toLowerCase().includes(keyword)) {
+                improvementCounts[keyword] = (improvementCounts[keyword] || 0) + 1;
+            }
+        });
+    });
+    return Object.entries(improvementCounts)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 3)
+        .map(([keyword]) => keyword);
+}

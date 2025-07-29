@@ -243,7 +243,8 @@ Projects: ${projects.join(', ')}
       - Include a test runner configuration and instructions on how to run the tests.
 
       **5. CI/CD AUTOMATION WITH GITHUB ACTIONS:**
-      - Generate GitHub Actions workflows that automatically run tests on every push/pull request.
+      - Generate GitHub Actions workflows that automatically run tests on every push/pull request **AND** can be triggered manually.
+      - Each workflow MUST include \`workflow_dispatch\` in its \`on:\` section, e.g. \`on: [push, pull_request, workflow_dispatch]\`, so the platform can dispatch it programmatically.
       - Create workflows that check code quality, run test suites, and validate functionality.
       - Include appropriate setup steps for the chosen languages and dependencies.
       - Configure workflows to report test results and update GitHub Issues based on test outcomes.
@@ -393,6 +394,197 @@ Return ONLY a JSON object with this exact structure:
         catch (error) {
             console.error('Error in resume-JD analysis:', error);
             throw new Error(`Resume analysis failed: ${error instanceof Error ? error.message : String(error)}`);
+        }
+    }
+    /**
+     * Comprehensive LLM-based code evaluation for candidate repositories (60% scoring component)
+     * This is the advanced intelligence layer that evaluates code quality, architecture, and innovation
+     * @param repoData Repository information and code content
+     * @param jobDescription The job description to evaluate against
+     * @param testCases The test cases that should be implemented
+     * @returns Detailed code evaluation with 60-point score breakdown
+     */
+    async evaluateCodeRepository(repoData, jobDescription, testCases) {
+        console.log('GeminiService: Starting comprehensive code evaluation for repo:', repoData.repoName);
+        // Prepare file contents for analysis
+        const fileContents = repoData.files.map(file => `--- FILE: ${file.path} ---\n${file.content}\n`).join('\n');
+        const prompt = `You are a Senior Software Engineer conducting a comprehensive code review for a ${jobDescription.title} position. 
+
+**CANDIDATE CONTEXT:**
+- Position: ${jobDescription.title}
+- Required Experience: ${jobDescription.minExperience}-${jobDescription.maxExperience} years
+- Required Languages: ${jobDescription.languages.join(', ')}
+- Project Context: ${jobDescription.projectContext}
+
+**REPOSITORY ANALYSIS:**
+Repository: ${repoData.repoName}
+URL: ${repoData.repoUrl}
+
+**CODE FILES TO ANALYZE:**
+${fileContents}
+
+**CI/CD TEST RESULTS:**
+${repoData.cicdResults ? `Passed: ${repoData.cicdResults.passed}/${repoData.cicdResults.total} tests` : 'No CI/CD results available'}
+
+**EVALUATION CRITERIA (60 POINTS TOTAL):**
+
+1. **Code Quality (15 points)**: Clean code, readability, documentation, naming conventions, code organization
+2. **Architecture & Design (15 points)**: Project structure, design patterns, modularity, scalability considerations
+3. **Innovation & Problem Solving (10 points)**: Creative solutions, additional features beyond requirements, algorithmic thinking
+4. **Best Practices (10 points)**: Error handling, testing approach, version control usage, dependency management
+5. **Performance (5 points)**: Efficiency, optimization, resource usage
+6. **Security (5 points)**: Input validation, secure coding practices, vulnerability avoidance
+
+**ANALYSIS REQUIREMENTS:**
+- Evaluate against the experience level (${jobDescription.minExperience}-${jobDescription.maxExperience} years)
+- Consider the specific role requirements and tech stack
+- Provide constructive, actionable feedback
+- Be fair but thorough in assessment
+
+Return ONLY a valid JSON object with this EXACT structure:
+{
+  "totalScore": number (0-60),
+  "breakdown": {
+    "codeQuality": {
+      "score": number (0-15),
+      "max": 15,
+      "feedback": "detailed analysis of code quality aspects"
+    },
+    "architecture": {
+      "score": number (0-15),
+      "max": 15,
+      "feedback": "analysis of project structure and design decisions"
+    },
+    "innovation": {
+      "score": number (0-10),
+      "max": 10,
+      "feedback": "evaluation of creative problem-solving and additional features"
+    },
+    "bestPractices": {
+      "score": number (0-10),
+      "max": 10,
+      "feedback": "assessment of development best practices"
+    },
+    "performance": {
+      "score": number (0-5),
+      "max": 5,
+      "feedback": "evaluation of code efficiency and optimization"
+    },
+    "security": {
+      "score": number (0-5),
+      "max": 5,
+      "feedback": "analysis of security considerations"
+    }
+  },
+  "overallFeedback": "comprehensive summary of the candidate's coding abilities",
+  "strengths": ["specific strength 1", "specific strength 2", "..."],
+  "improvements": ["specific improvement 1", "specific improvement 2", "..."],
+  "expertRecommendation": "hire|strong_consider|consider|pass"
+}`;
+        try {
+            const evaluationText = await generateContentWithFallback(prompt);
+            const evaluation = this.safeParseJson(evaluationText, 'code evaluation');
+            console.log('Code evaluation completed. Total LLM score:', evaluation.totalScore, '/60');
+            return evaluation;
+        }
+        catch (error) {
+            console.error('Error in code evaluation:', error);
+            throw new Error(`Code evaluation failed: ${error instanceof Error ? error.message : String(error)}`);
+        }
+    }
+    /**
+     * Generate a comprehensive final assessment report combining CI/CD (40%) + LLM evaluation (60%)
+     * @param cicdScore Score from automated tests (0-40)
+     * @param llmEvaluation LLM evaluation results (0-60)
+     * @param candidateInfo Basic candidate information
+     * @returns Final hybrid assessment report
+     */
+    async generateFinalAssessment(cicdScore, llmEvaluation, candidateInfo) {
+        console.log('GeminiService: Generating final assessment report');
+        const finalScore = cicdScore + llmEvaluation.totalScore;
+        // Determine grade based on final score
+        let grade;
+        let recommendation;
+        if (finalScore >= 90) {
+            grade = 'A+';
+            recommendation = 'Strong Hire';
+        }
+        else if (finalScore >= 85) {
+            grade = 'A';
+            recommendation = 'Strong Hire';
+        }
+        else if (finalScore >= 80) {
+            grade = 'B+';
+            recommendation = 'Hire';
+        }
+        else if (finalScore >= 75) {
+            grade = 'B';
+            recommendation = 'Hire';
+        }
+        else if (finalScore >= 70) {
+            grade = 'C+';
+            recommendation = 'Consider';
+        }
+        else if (finalScore >= 65) {
+            grade = 'C';
+            recommendation = 'Consider';
+        }
+        else if (finalScore >= 60) {
+            grade = 'D';
+            recommendation = 'No Hire';
+        }
+        else {
+            grade = 'F';
+            recommendation = 'No Hire';
+        }
+        const assessmentPrompt = `Generate a professional final assessment summary for this candidate:
+
+**Candidate**: ${candidateInfo.email}
+**Position**: ${candidateInfo.position}
+**Resume Suitability**: ${candidateInfo.suitabilityScore}/10
+**Final Technical Score**: ${finalScore}/100
+**Grade**: ${grade}
+**Recommendation**: ${recommendation}
+
+**Score Breakdown**:
+- Automated Tests (40%): ${cicdScore}/40
+- Code Review (60%): ${llmEvaluation.totalScore}/60
+
+**LLM Evaluation Details**:
+${JSON.stringify(llmEvaluation.breakdown, null, 2)}
+
+**Strengths**: ${llmEvaluation.strengths.join(', ')}
+**Areas for Improvement**: ${llmEvaluation.improvements.join(', ')}
+
+Create a professional, concise summary (2-3 paragraphs) that:
+1. Highlights the candidate's technical performance
+2. Notes key strengths and areas for improvement
+3. Justifies the recommendation
+
+Return only the summary text, no JSON formatting.`;
+        try {
+            const summaryText = await generateContentWithFallback(assessmentPrompt);
+            return {
+                finalScore,
+                grade,
+                recommendation,
+                summary: summaryText.trim(),
+                details: {
+                    automatedTests: {
+                        score: cicdScore,
+                        percentage: `${Math.round((cicdScore / 40) * 100)}%`
+                    },
+                    codeReview: {
+                        score: llmEvaluation.totalScore,
+                        percentage: `${Math.round((llmEvaluation.totalScore / 60) * 100)}%`
+                    },
+                    breakdown: llmEvaluation.breakdown
+                }
+            };
+        }
+        catch (error) {
+            console.error('Error generating final assessment:', error);
+            throw new Error(`Final assessment generation failed: ${error instanceof Error ? error.message : String(error)}`);
         }
     }
 }

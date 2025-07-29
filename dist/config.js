@@ -8,11 +8,21 @@ const dotenv_1 = __importDefault(require("dotenv"));
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const crypto_1 = __importDefault(require("crypto"));
-// Load environment variables, ensuring that variables defined in the .env file override any existing
-// variables set in the shell. This helps avoid situations where stale shell variables (e.g. an
-// outdated GITHUB_PRIVATE_KEY_PATH) shadow the updated value in the .env file and cause confusing
-// authentication errors.
-dotenv_1.default.config({ override: true });
+// Load environment variables, prioritising a local `.env` if present. If not found, fall back to `local.env` so devs don't have to rename the file. The `override` flag ensures file values replace shell values (handy during dev).
+const defaultEnvPath = path_1.default.resolve(process.cwd(), '.env');
+const localEnvPath = path_1.default.resolve(process.cwd(), 'local.env');
+const chosenEnvPath = fs_1.default.existsSync(defaultEnvPath)
+    ? defaultEnvPath
+    : fs_1.default.existsSync(localEnvPath)
+        ? localEnvPath
+        : undefined;
+if (chosenEnvPath) {
+    dotenv_1.default.config({ path: chosenEnvPath, override: true });
+}
+else {
+    // Fallback: no env file found – still load env vars from the shell
+    dotenv_1.default.config({ override: true });
+}
 // Log environment variables (excluding sensitive ones)
 const logEnvVars = () => {
     const envVars = { ...process.env };
@@ -73,7 +83,8 @@ if (!process.env.JWT_SECRET) {
 exports.JWT_SECRET = process.env.JWT_SECRET;
 exports.config = {
     port: parseInt(process.env.PORT || '3001', 10),
-    executionServiceUrl: process.env.EXECUTION_SERVICE_URL || 'http://localhost:5000',
+    // External code-execution microservice (disabled by default)
+    executionServiceUrl: process.env.EXECUTION_SERVICE_URL || '',
     geminiApiKey: process.env.GEMINI_API_KEY || '',
     uploadDir: process.env.UPLOAD_DIR || 'uploads',
     github: {

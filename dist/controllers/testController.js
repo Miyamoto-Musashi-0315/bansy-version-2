@@ -45,6 +45,10 @@ const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const os = __importStar(require("os"));
 const util = __importStar(require("util"));
+const githubService_1 = __importDefault(require("../services/githubService"));
+// Map the orgName from config to what GithubService expects
+const githubConfig = { ...config_1.config.github, organizationName: config_1.config.github.orgName };
+const githubService = new githubService_1.default(githubConfig);
 /**
  * Controller for handling test-related operations
  */
@@ -318,7 +322,16 @@ exports.testController = {
                             }
                         };
                         console.log(`Executing test case ${i + 1} with payload:`, JSON.stringify(payload, null, 2));
-                        // Execute the code using the execution service
+                        // Execute the code using the external execution service (if configured)
+                        if (!config_1.config.executionServiceUrl) {
+                            console.warn('[runTests] executionServiceUrl is not configured – skipping remote execution');
+                            testResults.results.push({
+                                testCase: i,
+                                passed: false,
+                                error: 'Execution service disabled – configure EXECUTION_SERVICE_URL to enable remote runs.'
+                            });
+                            continue;
+                        }
                         const executionResponse = await axios_1.default.post(`${config_1.config.executionServiceUrl}/run`, payload);
                         const result = executionResponse.data;
                         console.log(`Execution service response for test case ${i + 1}:`, JSON.stringify(result, null, 2));
@@ -409,6 +422,37 @@ exports.testController = {
             }
             if (!test.gitRepoUrl) {
                 return res.status(400).json({ error: 'No Git repository URL found for this test' });
+            }
+            // ────────────────────────────────────────────────────────────
+            // NEW: If no execution micro-service is configured we rely on
+            // the repository's CI/CD pipeline for test execution.
+            // ────────────────────────────────────────────────────────────
+            if (!config_1.config.executionServiceUrl) {
+                try {
+                    // Extract repo name from the URL: https://github.com/org/repo.git
+                    const repoNameMatch = test.gitRepoUrl.match(/github\.com\/[^\/]+\/(.+?)(?:\.git)?$/);
+                    const repoName = repoNameMatch ? repoNameMatch[1] : null;
+                    if (!repoName) {
+                        return res.status(400).json({ error: 'Unable to parse repository name from URL.' });
+                    }
+                    // No manual dispatch – rely on push / PR triggers. Just record the submission.
+                    const submission = await prismaClient_1.prisma.submission.create({
+                        data: {
+                            status: 'pending',
+                            testId: test.id,
+                            userId: userId || undefined,
+                        },
+                    });
+                    return res.json({
+                        submissionId: submission.id,
+                        status: 'pending',
+                        message: 'Submission recorded. CI/CD workflow will run automatically when the candidate pushes or updates their pull-request.'
+                    });
+                }
+                catch (err) {
+                    console.error('[submitSolution] Error triggering workflow dispatch:', err);
+                    return res.status(500).json({ error: 'Failed to trigger CI/CD workflow for this submission.' });
+                }
             }
             // Run the tests on the repository code (reusing the same logic as runTests)
             // This ensures we're testing the final solution as committed to GitHub
@@ -658,8 +702,8 @@ exports.testController = {
                     const testCase = test.testCases[i];
                     console.log(`Running submission test case ${i + 1}/${test.testCases.length}`);
                     try {
-                        // Execute the code using the execution service
-                        const executionResponse = await axios_1.default.post(`${config_1.config.executionServiceUrl}/run`, {
+                        // Prepare payload for execution service
+                        const payload = {
                             language,
                             repoUrl: gitRepoUrl,
                             mainFile,
@@ -668,24 +712,39 @@ exports.testController = {
                                 expectedOutput: testCase.expectedOutput,
                                 description: testCase.description
                             }
-                        });
-                        const result = executionResponse.data;
-                        if (result.passed) {
-                            passedTests++;
-                            testResults.results.push({
-                                testCase: i,
-                                passed: true,
-                                output: result.output || "Test passed successfully."
-                            });
-                        }
-                        else {
+                        };
+                        console.log(`Executing submission test case ${i + 1} with payload:`, JSON.stringify(payload, null, 2));
+                        // Execute the code using the external execution service (if configured)
+                        if (!config_1.config.executionServiceUrl) {
+                            console.warn('[submitSolution] executionServiceUrl not configured – skipping remote execution');
                             testResults.results.push({
                                 testCase: i,
                                 passed: false,
-                                output: result.output || "",
-                                error: result.error || `Expected: ${testCase.expectedOutput}`
+                                error: 'Execution service disabled – configure EXECUTION_SERVICE_URL to enable remote runs.'
                             });
                         }
+                        else {
+                            const executionResponse = await axios_1.default.post(`${config_1.config.executionServiceUrl}/run`, payload);
+                            const result = executionResponse.data;
+                            // existing after-call logic will process result; to preserve flow, we assign similar to earlier var name
+                            if (result.passed) {
+                                passedTests++;
+                                testResults.results.push({
+                                    testCase: i,
+                                    passed: true,
+                                    output: result.output || 'Test passed successfully.'
+                                });
+                            }
+                            else {
+                                testResults.results.push({
+                                    testCase: i,
+                                    passed: false,
+                                    output: result.output || '',
+                                    error: result.error || `Expected: ${testCase.expectedOutput}`
+                                });
+                            }
+                        }
+                        // if execution disabled, we already pushed to results
                     }
                     catch (error) {
                         console.error(`Error executing submission test case ${i}:`, error);
