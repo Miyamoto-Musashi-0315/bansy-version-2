@@ -6,6 +6,7 @@ import pdf from 'pdf-parse';
 import fs from 'fs';
 import GithubService from '../services/githubService';
 import { config } from '../config';
+import { emailService, CandidateEmailData } from '../services/emailService';
 
 // Initialize AI service
 const geminiService = new GeminiService();
@@ -75,10 +76,19 @@ export const jdController = {
   /**
    * Gets all Job Descriptions
    */
-  async getJds(req: Request, res: Response) {
+  async getJds(req: UserRequest, res: Response) {
     console.log('jdController.getJds: START');
     try {
+      const userId = req.user?.id;
+      
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+
       const jds = await prisma.jobDescription.findMany({
+        where: {
+          creatorId: userId
+        },
         include: {
           _count: {
             select: { candidates: true },
@@ -88,7 +98,7 @@ export const jdController = {
           createdAt: 'desc',
         },
       });
-      console.log('jdController.getJds: END - Fetched all JDs');
+      console.log(`jdController.getJds: END - Fetched ${jds.length} JDs for user ${userId}`);
       res.json(jds);
     } catch (error) {
       console.error('jdController.getJds: ERROR fetching JDs:', error);
@@ -99,12 +109,21 @@ export const jdController = {
   /**
    * Gets a single Job Description by ID
    */
-  async getJdById(req: Request, res: Response) {
+  async getJdById(req: UserRequest, res: Response) {
     console.log('jdController.getJdById: START');
     try {
       const { id } = req.params;
+      const userId = req.user?.id;
+      
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+
       const jd = await prisma.jobDescription.findUnique({
-        where: { id },
+        where: { 
+          id,
+          creatorId: userId  // Ensure user can only access their own JDs
+        },
         include: {
           test: true,
           candidates: {
@@ -224,7 +243,7 @@ export const jdController = {
     console.log('jdController.uploadResumeForJd: START');
     try {
       const { id: jdId } = req.params;
-      const { email } = req.body;
+      const { email } = req.body; // Email is now optional since we extract it from resume
       const file = req.file;
 
       if (!jdId) {
@@ -233,9 +252,7 @@ export const jdController = {
       if (!file) {
         return res.status(400).json({ error: 'Resume file is required.' });
       }
-      if (!email) {
-        return res.status(400).json({ error: 'Candidate email is required.' });
-      }
+      // Removed email validation since we extract it from the resume
 
       const jobDescription = await prisma.jobDescription.findUnique({
         where: { id: jdId },
@@ -255,10 +272,17 @@ export const jdController = {
       const analysis = await geminiService.analyzeResumeForJd(resumeText, jobDescription);
       console.log('jdController.uploadResumeForJd: AI analysis completed. Score:', analysis.suitabilityScore);
 
+      // Ensure we have an email from the analysis
+      if (!analysis.candidateEmail && !email) {
+        return res.status(400).json({ 
+          error: 'Unable to extract candidate email from resume. Please ensure the resume contains a valid email address.' 
+        });
+      }
+
       // Create the resume record with analysis
       const resume = await prisma.resume.create({
         data: {
-          email: analysis.candidateEmail || email,
+          email: analysis.candidateEmail || email, // Prefer extracted email, fallback to provided email
           filename: file.originalname,
           path: file.path || 'temporary-path',
           size: file.size,
@@ -339,7 +363,7 @@ export const jdController = {
         return res.status(400).json({ error: 'No test project has been generated for this JD yet.' });
       }
 
-      // Get the selected candidates
+      // Get the selected candidates – we need their resume + repo info
       const candidates = await prisma.candidate.findMany({
         where: {
           id: { in: candidateIds },
@@ -350,26 +374,81 @@ export const jdController = {
         },
       });
 
-      if (candidates.length === 0) {
-        return res.status(404).json({ error: 'No eligible candidates found.' });
+      // Split into already-processed vs yet-to-process
+      const candidatesToProcess = candidates.filter(c => !c.individualRepoUrl && c.status !== 'TestSent');
+      const candidatesAlreadyProcessed = candidates.filter(c => c.individualRepoUrl || c.status === 'TestSent');
+
+      console.log('Candidates list:', candidates.map(c => ({ id: c.id, email: c.resume.email, status: c.status, repo: c.individualRepoUrl })));
+      console.log(`Total selected: ${candidates.length}. To process: ${candidatesToProcess.length}. Already have repos: ${candidatesAlreadyProcessed.length}`);
+
+      if (candidatesToProcess.length === 0) {
+        console.log('All selected candidates already have repositories – nothing to create.');
+        return res.status(200).json({
+          message: 'All selected candidates already have repositories',
+          successful: 0,
+          failed: 0,
+          skipped: candidatesAlreadyProcessed.map(c => ({ candidateId: c.id, email: c.resume.email, reason: 'Repository already exists' }))
+        });
       }
 
-      // Create individual repositories with CI/CD workflows for each candidate
-      console.log(`Creating individual repositories for ${candidates.length} candidates...`);
+      // Generate fresh project template only once
+      console.log('Getting existing project template from test record...');
       
-      // Generate fresh project template with CI/CD components
-      const projectTemplate = await geminiService.generateProjectFromJd({
-        title: jobDescription.title,
-        description: jobDescription.description,
-        minExperience: jobDescription.minExperience,
-        maxExperience: jobDescription.maxExperience,
-        languages: jobDescription.languages,
-        projectContext: jobDescription.projectContext,
-      });
+      // Use the stored project template instead of regenerating
+      let projectTemplate;
+      try {
+        // Reconstruct project template from stored data
+        const testWithFiles = await prisma.test.findUnique({
+          where: { id: jobDescription.test.id },
+          include: {
+            testCases: true,
+            files: true,
+          },
+        });
 
-      console.log(`Generated project with ${projectTemplate.githubWorkflows?.length || 0} workflows and ${projectTemplate.githubIssues?.length || 0} issues`);
+        if (testWithFiles && testWithFiles.files.length > 0) {
+          // Reconstruct the project template from database
+          projectTemplate = {
+            title: testWithFiles.title,
+            description: testWithFiles.description || '',
+            difficulty: testWithFiles.difficulty,
+            language: testWithFiles.language,
+            languages: testWithFiles.language.split(', ').filter(Boolean),
+            requirements: Array.isArray(testWithFiles.requirements) ? testWithFiles.requirements : [],
+            testCases: testWithFiles.testCases.map(tc => ({
+              input: tc.input,
+              expectedOutput: tc.expectedOutput,
+              description: tc.description,
+              category: tc.category,
+              difficulty: tc.difficulty,
+              points: tc.points,
+              verificationMethod: tc.verificationMethod,
+            })),
+            projectFiles: testWithFiles.files.map(file => ({
+              path: file.path,
+              content: file.content,
+            })),
+            githubWorkflows: [], // These are not stored separately in DB, will be empty
+            githubIssues: [], // These are not stored separately in DB, will be empty
+          };
+          console.log(`Using stored project template: ${projectTemplate.projectFiles.length} files, ${projectTemplate.testCases.length} test cases.`);
+        } else {
+          throw new Error('No stored project template found');
+        }
+      } catch (error) {
+        console.log('No stored project template found or error reconstructing, generating new one...', error);
+        projectTemplate = await geminiService.generateProjectFromJd({
+          title: jobDescription.title,
+          description: jobDescription.description,
+          minExperience: jobDescription.minExperience,
+          maxExperience: jobDescription.maxExperience,
+          languages: jobDescription.languages,
+          projectContext: jobDescription.projectContext,
+        });
+        console.log(`Project generated: ${projectTemplate.projectFiles.length} files, ${projectTemplate.githubWorkflows?.length || 0} workflows, ${projectTemplate.githubIssues?.length || 0} issues.`);
+      }
 
-      // Create individual repositories for each candidate
+      // Results containers
       const candidateResults: Array<{
         candidateId: string;
         email: string;
@@ -378,12 +457,48 @@ export const jdController = {
         error?: string;
       }> = [];
 
-      for (const candidate of candidates) {
+      // Loop only over candidates that need repos
+      for (const candidate of candidatesToProcess) {
         try {
-          console.log(`Creating repository for candidate: ${candidate.resume.email}`);
-          
-          // Create individual repository with CI/CD and issues
-          const { repoUrl, cloneUrl } = await githubService.createCandidateRepo(
+          // Check if another candidate with the same email already has a repo for this JD (idempotency guard)
+          const existingRepoHolder = await prisma.candidate.findFirst({
+            where: {
+              jobDescriptionId: jdId,
+              individualRepoUrl: { not: null },
+              resume: {
+                email: candidate.resume.email,
+              },
+            },
+            select: {
+              individualRepoUrl: true,
+              id: true,
+            },
+          });
+
+          if (existingRepoHolder && existingRepoHolder.individualRepoUrl) {
+            console.log(`ℹ️  Re-using existing repository for ${candidate.resume.email} (created for candidate ${existingRepoHolder.id}).`);
+            await prisma.candidate.update({
+              where: { id: candidate.id },
+              data: {
+                status: 'TestSent',
+                individualRepoUrl: existingRepoHolder.individualRepoUrl,
+                repoCreatedAt: new Date(),
+              },
+            });
+
+            candidateResults.push({
+              candidateId: candidate.id,
+              email: candidate.resume.email,
+              repoUrl: existingRepoHolder.individualRepoUrl,
+              success: true,
+              error: 'Re-used existing repository',
+            });
+            continue; // Skip new repo creation
+          }
+
+          console.log(`Creating repository for candidate ${candidate.id} – ${candidate.resume.email}`);
+
+          const { repoUrl } = await githubService.createCandidateRepo(
             jobDescription.test.id,
             candidate.id,
             projectTemplate.projectFiles,
@@ -391,21 +506,22 @@ export const jdController = {
             projectTemplate.githubIssues || []
           );
 
+          // Persist repo URL & status in DB
+          await prisma.candidate.update({
+            where: { id: candidate.id },
+            data: {
+              status: 'TestSent',
+              individualRepoUrl: repoUrl,
+              repoCreatedAt: new Date(),
+            },
+          });
+
           candidateResults.push({
             candidateId: candidate.id,
             email: candidate.resume.email,
             repoUrl,
             success: true,
           });
-
-          // Update candidate status to 'TestSent'
-          await prisma.candidate.update({
-            where: { id: candidate.id },
-            data: {
-              status: 'TestSent',
-            },
-          });
-
           console.log(`✅ Repository created for ${candidate.resume.email}: ${repoUrl}`);
         } catch (candidateError: any) {
           console.error(`❌ Failed to create repository for candidate ${candidate.id}:`, candidateError);
@@ -419,28 +535,49 @@ export const jdController = {
         }
       }
 
-      const successfulRepos = candidateResults.filter(r => r.success);
-      const failedRepos = candidateResults.filter(r => !r.success);
-
-      console.log(`jdController.sendTestsToCandiidates: END - ${successfulRepos.length} successful, ${failedRepos.length} failed`);
-      
-      // TODO: In a real application, you would send emails here with individual repository links
-      console.log('Individual repository links would be sent to:');
-      successfulRepos.forEach(result => {
-        console.log(`- ${result.email}: ${result.repoUrl}`);
-      });
-
-      if (failedRepos.length > 0) {
-        console.warn('Failed to create repositories for:');
-        failedRepos.forEach(result => {
-          console.warn(`- ${result.email}: ${result.error}`);
+      // Combine skipped candidates into candidateResults
+      for (const skipped of candidatesAlreadyProcessed) {
+        candidateResults.push({
+          candidateId: skipped.id,
+          email: skipped.resume.email,
+          repoUrl: skipped.individualRepoUrl || '',
+          success: true,
+          error: 'Repository already existed – skipped creation',
         });
       }
 
-      res.status(200).json({
-        message: `Individual repositories created for ${successfulRepos.length}/${candidateResults.length} candidates`,
+      const successfulRepos = candidateResults.filter(r => r.success && r.repoUrl);
+      const failedRepos = candidateResults.filter(r => !r.success);
+
+      console.log(`Repo creation: ${successfulRepos.length} successful, ${failedRepos.length} failed, ${candidatesAlreadyProcessed.length} skipped.`);
+
+      // Send emails only for newly-created repos and if email is enabled
+      if (successfulRepos.length > 0) {
+        console.log('Sending repository links via email…');
+        const emailData: CandidateEmailData[] = successfulRepos.map(result => ({
+          email: result.email,
+          candidateName: result.email.split('@')[0],
+          jobTitle: jobDescription.title,
+          repositoryUrl: result.repoUrl,
+          companyName: process.env.COMPANY_NAME || undefined,
+          testUrl: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/test/${jobDescription.test?.id}`,
+        }));
+
+        try {
+          const emailResults = await emailService.sendBulkRepositoryLinks(emailData);
+          console.log(`Email dispatch finished: ${emailResults.successful} successful, ${emailResults.failed} failed.`);
+        } catch (emailError) {
+          console.error('Bulk email sending failed:', emailError);
+        }
+      } else {
+        console.log('No new repositories created – skipping email dispatch.');
+      }
+
+      return res.status(200).json({
+        message: `Repositories processed – ${successfulRepos.length} created, ${candidatesAlreadyProcessed.length} skipped, ${failedRepos.length} failed`,
         successful: successfulRepos.length,
         failed: failedRepos.length,
+        skipped: candidatesAlreadyProcessed.length,
         results: candidateResults.map(r => ({
           candidateId: r.candidateId,
           email: r.email,
@@ -449,12 +586,6 @@ export const jdController = {
           success: r.success,
           error: r.error,
         })),
-        projectInfo: {
-          title: projectTemplate.title,
-          difficulty: projectTemplate.difficulty,
-          cicdWorkflows: projectTemplate.githubWorkflows?.length || 0,
-          githubIssues: projectTemplate.githubIssues?.length || 0,
-        },
       });
     } catch (error) {
       console.error('jdController.sendTestsToCandiidates: ERROR sending tests:', error);
@@ -861,6 +992,209 @@ export const jdController = {
     } catch (error: any) {
       console.error('[Final Assessment] Error fetching results:', error);
       res.status(500).json({ error: 'Failed to fetch final assessment results' });
+    }
+  },
+
+  /**
+   * Get all candidate repositories for a Job Description
+   */
+  async getCandidateRepositories(req: UserRequest, res: Response) {
+    console.log('jdController.getCandidateRepositories: START');
+    try {
+      const { id: jdId } = req.params;
+      const userId = req.user?.id;
+
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      // Get all candidates with repository information
+      const candidates = await prisma.candidate.findMany({
+        where: {
+          jobDescriptionId: jdId,
+          individualRepoUrl: { not: null }, // Only candidates with repositories
+        },
+        include: {
+          resume: true,
+          jobDescription: {
+            select: {
+              title: true,
+              test: {
+                select: {
+                  id: true,
+                  title: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: {
+          repoCreatedAt: 'desc',
+        },
+      });
+
+      const repositoryData = candidates.map(candidate => ({
+        candidateId: candidate.id,
+        email: candidate.resume.email,
+        repositoryUrl: candidate.individualRepoUrl,
+        repoCreatedAt: candidate.repoCreatedAt,
+        status: candidate.status,
+        suitabilityScore: candidate.suitabilityScore,
+        jobTitle: candidate.jobDescription?.title,
+        testId: candidate.jobDescription?.test?.id,
+      }));
+
+      console.log(`Found ${repositoryData.length} candidate repositories for JD ${jdId}`);
+
+      res.json({
+        jobDescriptionId: jdId,
+        repositories: repositoryData,
+        total: repositoryData.length,
+      });
+    } catch (error) {
+      console.error('jdController.getCandidateRepositories: ERROR:', error);
+      res.status(500).json({ error: 'Failed to fetch candidate repositories' });
+    }
+  },
+
+  /**
+   * Archive repositories for completed assessments
+   */
+  async archiveRepositories(req: UserRequest, res: Response) {
+    console.log('jdController.archiveRepositories: START');
+    try {
+      const { id: jdId } = req.params;
+      const { candidateIds } = req.body;
+      const userId = req.user?.id;
+
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      if (!candidateIds || !Array.isArray(candidateIds)) {
+        return res.status(400).json({ error: 'Candidate IDs are required' });
+      }
+
+      // Get candidates with repository URLs
+      const candidates = await prisma.candidate.findMany({
+        where: {
+          id: { in: candidateIds },
+          jobDescriptionId: jdId,
+          individualRepoUrl: { not: null },
+        },
+      });
+
+      const archivedRepos = [];
+      const failedArchives = [];
+
+      for (const candidate of candidates) {
+        try {
+          // Update candidate status to indicate repository is archived
+          await prisma.candidate.update({
+            where: { id: candidate.id },
+            data: {
+              status: 'Archived',
+            },
+          });
+
+          archivedRepos.push({
+            candidateId: candidate.id,
+            repositoryUrl: candidate.individualRepoUrl,
+          });
+
+          console.log(`✅ Marked repository as archived for candidate ${candidate.id}`);
+        } catch (archiveError: any) {
+          console.error(`❌ Failed to archive repository for candidate ${candidate.id}:`, archiveError);
+          failedArchives.push({
+            candidateId: candidate.id,
+            error: archiveError.message,
+          });
+        }
+      }
+
+      res.json({
+        message: `Archived ${archivedRepos.length}/${candidates.length} repositories`,
+        archived: archivedRepos,
+        failed: failedArchives,
+      });
+    } catch (error) {
+      console.error('jdController.archiveRepositories: ERROR:', error);
+      res.status(500).json({ error: 'Failed to archive repositories' });
+    }
+  },
+
+  /**
+   * Get repository status and metrics for a candidate
+   */
+  async getCandidateRepositoryStatus(req: UserRequest, res: Response) {
+    console.log('jdController.getCandidateRepositoryStatus: START');
+    try {
+      const { candidateId } = req.params;
+      const userId = req.user?.id;
+
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      // Get candidate with repository information and submission events
+      const candidate = await prisma.candidate.findUnique({
+        where: { id: candidateId },
+        include: {
+          resume: true,
+          jobDescription: {
+            include: {
+              test: true,
+            },
+          },
+          submissionEvents: {
+            orderBy: {
+              receivedAt: 'desc',
+            },
+            take: 10, // Latest 10 events
+          },
+        },
+      });
+
+      if (!candidate) {
+        return res.status(404).json({ error: 'Candidate not found' });
+      }
+
+      if (!candidate.individualRepoUrl) {
+        return res.status(404).json({ error: 'No repository found for this candidate' });
+      }
+
+      // Calculate metrics from submission events
+      const totalEvents = candidate.submissionEvents.length;
+      const pushEvents = candidate.submissionEvents.filter(e => e.eventType === 'push').length;
+      const workflowEvents = candidate.submissionEvents.filter(e => e.eventType.includes('workflow')).length;
+      
+      const lastActivity = candidate.submissionEvents.length > 0 
+        ? candidate.submissionEvents[0].receivedAt 
+        : candidate.repoCreatedAt;
+
+      const timeElapsed = lastActivity 
+        ? Math.floor((new Date().getTime() - new Date(lastActivity).getTime()) / (1000 * 60 * 60)) // hours
+        : 0;
+
+      res.json({
+        candidateId: candidate.id,
+        email: candidate.resume.email,
+        repositoryUrl: candidate.individualRepoUrl,
+        repoCreatedAt: candidate.repoCreatedAt,
+        status: candidate.status,
+        jobTitle: candidate.jobDescription.title,
+        metrics: {
+          totalEvents,
+          pushEvents,
+          workflowEvents,
+          lastActivity,
+          hoursElapsed: timeElapsed,
+        },
+        recentActivity: candidate.submissionEvents.slice(0, 5), // Latest 5 events
+      });
+    } catch (error) {
+      console.error('jdController.getCandidateRepositoryStatus: ERROR:', error);
+      res.status(500).json({ error: 'Failed to fetch repository status' });
     }
   }
 };

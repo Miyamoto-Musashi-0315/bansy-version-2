@@ -211,6 +211,18 @@ export const aiController = {
         });
       }
 
+      // Insert project files into TestFile table for future reuse
+      console.log(`Creating ${projectTemplate.projectFiles.length} test files...`);
+      if (projectTemplate.projectFiles.length > 0) {
+        await prisma.testFile.createMany({
+          data: projectTemplate.projectFiles.map(file => ({
+            path: file.path,
+            content: file.content,
+            testId: updatedTest.id,
+          })),
+        });
+      }
+
       const finalTest = await prisma.test.findUnique({
         where: { id: updatedTest.id },
         include: { testCases: true },
@@ -358,11 +370,13 @@ export const aiController = {
             cloneUrl,
           });
 
-          // Update candidate status to 'TestSent'
+          // Update candidate status to 'TestSent' and store repository URL
           await prisma.candidate.update({
             where: { id: candidate.id },
             data: {
               status: 'TestSent',
+              individualRepoUrl: repoUrl,
+              repoCreatedAt: new Date(),
             },
           });
 

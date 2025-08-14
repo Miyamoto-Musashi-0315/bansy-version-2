@@ -7,7 +7,6 @@ import {
   Paper,
   Button,
   FileInput,
-  TextInput,
   Stack,
   Alert,
   Group,
@@ -20,7 +19,6 @@ import { uploadResumeForJd } from './../services/resumeService';
 import { logger } from './../utils/logger';
 
 interface ResumeFormData {
-  email: string;
   file: File | null;
 }
 
@@ -40,11 +38,9 @@ const JdResumeUpload = () => {
 
   const form = useForm<ResumeFormData>({
     initialValues: {
-      email: '',
       file: null,
     },
     validate: {
-      email: (value) => (/^\S+@\S+$/.test(value) ? null : 'Invalid email'),
       file: (value) => {
         console.log('File validation - value:', value);
         return (!value ? 'Resume file is required' : null);
@@ -71,12 +67,10 @@ const JdResumeUpload = () => {
     setAnalysisResult(null);
 
     const formData = new FormData();
-    formData.append('email', values.email);
     formData.append('file', fileToUpload);
 
     const fileEntry = formData.get('file');
     console.log('FormData created:', {
-      email: formData.get('email'),
       file: fileEntry,
       fileType: fileEntry?.constructor.name,
       fileSize: (fileEntry as File)?.size,
@@ -138,13 +132,6 @@ const JdResumeUpload = () => {
       <Paper withBorder radius="md" p="xl">
         <form onSubmit={form.onSubmit(handleSubmit)}>
           <Stack gap="md">
-            <TextInput
-              required
-              label="Candidate Email"
-              placeholder="candidate@company.com"
-              {...form.getInputProps('email')}
-            />
-
             <FileInput
               required
               label="Resume"

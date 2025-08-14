@@ -2,18 +2,23 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { MantineProvider, createTheme } from '@mantine/core';
 import '@mantine/core/styles.css';
 import { lazy, Suspense } from 'react';
-import { Container, Loader, Box } from '@mantine/core';
+import { Container, Loader, Box, Text } from '@mantine/core';
+import React from 'react'; // Added missing import for React
 
 // Lazy load heavy components to reduce initial bundle size
 const Login = lazy(() => import('./pages/Login').then(module => ({ default: module.Login })));
 const Register = lazy(() => import('./pages/Register').then(module => ({ default: module.Register })));
-const JdDashboard = lazy(() => import('./pages/JdDashboard'));
+// const JdDashboard = lazy(() => import('./pages/JdDashboard'));
+// const DashboardLayout = lazy(() => import('./layouts/DashboardLayout').then(module => ({ default: module.DashboardLayout })));
 const JdCreate = lazy(() => import('./pages/JdCreate'));
 const JdDetailsPage = lazy(() => import('./pages/JdDetailsPage'));
 const JdResumeUpload = lazy(() => import('./pages/JdResumeUpload'));
 const JdEdit = lazy(() => import('./pages/JdEdit'));
 const TestPage = lazy(() => import('./pages/TestPage').then(module => ({ default: module.TestPage })));
-const DashboardLayout = lazy(() => import('./layouts/DashboardLayout').then(module => ({ default: module.DashboardLayout })));
+
+// Eagerly import critical layout and default dashboard to avoid Suspense hang on first render
+import JdDashboard from './pages/JdDashboard';
+import { DashboardLayout } from './layouts/DashboardLayout';
 
 // Keep ProtectedRoute non-lazy as it's needed for route protection
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -24,15 +29,48 @@ const theme = createTheme({
 });
 
 // Loading fallback component
-const LoadingFallback = () => (
-  <Container style={{ textAlign: 'center', marginTop: '50px' }}>
-    <Box>
-      <Loader size="lg" />
-    </Box>
-  </Container>
-);
+const LoadingFallback = () => {
+  console.log('LoadingFallback: Rendering suspense fallback');
+  
+  // Send log to backend
+  React.useEffect(() => {
+    fetch('/api/debug-log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'LOADING_FALLBACK',
+        message: 'Suspense fallback is showing (lazy loading component)',
+        timestamp: new Date().toISOString()
+      })
+    }).catch(console.error);
+  }, []);
+  
+  return (
+    <Container style={{ textAlign: 'center', marginTop: '50px' }}>
+      <Box>
+        <Loader size="lg" />
+        <Text mt="md">Loading component...</Text>
+      </Box>
+    </Container>
+  );
+};
 
 function App() {
+  console.log('App: Component rendering');
+  
+  // Send log to backend
+  React.useEffect(() => {
+    fetch('/api/debug-log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'APP_RENDER',
+        message: 'App component mounted and rendering',
+        timestamp: new Date().toISOString()
+      })
+    }).catch(console.error);
+  }, []);
+
   return (
     <MantineProvider theme={theme} defaultColorScheme="light">
       <BrowserRouter>

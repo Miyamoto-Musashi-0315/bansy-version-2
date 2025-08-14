@@ -5,18 +5,30 @@ import { logger } from '../utils/logger';
 // Resolve the base API URL. If the environment variable already includes the
 // `/api` segment we use it as-is, otherwise we append it so that relative paths
 // like `/jds` correctly resolve to `/api/jds` on the backend.  If the env var is
-// not provided we fall back to `window.location.origin`, which automatically
-// matches the current protocol (http vs https) and host, eliminating cross-
-// scheme issues that cause long connection delays when the page is served over
-// HTTPS but the API URL points to plain HTTP.
+// not provided we fall back to `/api` which works with Vite's proxy configuration.
 
-const fallbackOrigin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001';
-const rawBaseUrl = (import.meta.env.VITE_API_URL as string | undefined) || fallbackOrigin;
+const isDevelopment = import.meta.env.DEV;
+const rawBaseUrl = (import.meta.env.VITE_API_URL as string | undefined);
 
-const baseURL = rawBaseUrl.endsWith('/api') ? rawBaseUrl : `${rawBaseUrl.replace(/\/+$/, '')}/api`;
+let baseURL: string;
+
+if (rawBaseUrl) {
+  // If VITE_API_URL is explicitly set, use it
+  baseURL = rawBaseUrl.endsWith('/api') ? rawBaseUrl : `${rawBaseUrl.replace(/\/+$/, '')}/api`;
+} else if (isDevelopment) {
+  // In development, use relative path which will be handled by Vite proxy
+  baseURL = '/api';
+} else {
+  // In production, fall back to current origin + /api
+  const fallbackOrigin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001';
+  baseURL = `${fallbackOrigin.replace(/\/+$/, '')}/api`;
+}
+
+console.log('API baseURL:', baseURL);
 
 export const api = axios.create({
   baseURL,
+  timeout: 30000, // Increase default timeout to accommodate slower operations
   headers: {
     'Content-Type': 'application/json',
   },
@@ -28,6 +40,12 @@ api.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  console.log('API Request:', { 
+    method: config.method?.toUpperCase(),
+    url: config.url,
+    fullURL: `${config.baseURL}${config.url}`,
+    headers: config.headers
+  });
   logger.debug('API Request', { 
     method: config.method?.toUpperCase(),
     url: config.url,
@@ -39,6 +57,11 @@ api.interceptors.request.use((config) => {
 // Add response logging and handle auth errors
 api.interceptors.response.use(
   (response) => {
+    console.log('API Response:', {
+      status: response.status,
+      url: response.config.url,
+      data: response.data
+    });
     logger.debug('API Response', {
       status: response.status,
       url: response.config.url,
@@ -47,6 +70,13 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
+    console.error('API Error:', {
+      status: error.response?.status,
+      url: error.config?.url,
+      message: error.message,
+      response: error.response?.data,
+      code: error.code
+    });
     logger.error('API Error', {
       status: error.response?.status,
       url: error.config?.url,
@@ -205,13 +235,13 @@ export const uploadResume = async (formData: FormData): Promise<{ message: strin
 export const assessmentTracking = {
   // Get real-time tracking data for a Job Description
   async getTrackingData(jdId: string) {
-    const response = await api.get(`/api/jds/${jdId}/tracking`);
+    const response = await api.get(`/jds/${jdId}/tracking`);
     return response.data;
   },
 
   // Get detailed assessment data for a specific candidate
   async getCandidateAssessment(candidateId: string) {
-    const response = await api.get(`/api/jds/candidate/${candidateId}/assessment`);
+    const response = await api.get(`/jds/candidate/${candidateId}/assessment`);
     return response.data;
   }
 };

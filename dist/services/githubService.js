@@ -689,8 +689,16 @@ This issue is validated by test case(s): ${issue.testCaseIds.map(id => `#${id + 
             });
             repo = response.data;
             console.log('Repository created successfully:', repo.html_url);
+            // Ensure there is at least one CI workflow that uploads test results artifacts
+            const hasWorkflow = (workflowFiles || []).some(f => typeof (f === null || f === void 0 ? void 0 : f.path) === 'string' && f.path.startsWith('.github/workflows/'));
+            const effectiveWorkflowFiles = [...(workflowFiles || [])];
+            if (!hasWorkflow) {
+                console.log('[GitHub] No workflow files provided – injecting default CI workflow with artifact upload');
+                const defaultCi = `name: CI/CD\n\non:\n  push:\n    branches: [\"main\"]\n  workflow_dispatch:\n\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with:\n          node-version: '20'\n          cache: 'npm'\n      - name: Install dependencies\n        run: npm ci || npm install\n      - name: Run tests (Jest JSON)\n        run: npm test -- --json --outputFile=jest-results.json --runInBand || true\n      - name: Upload test results\n        uses: actions/upload-artifact@v4\n        with:\n          name: test-results\n          path: jest-results.json\n`;
+                effectiveWorkflowFiles.push({ path: '.github/workflows/ci.yml', content: defaultCi });
+            }
             // Combine all files (project files + workflow files)
-            const allFiles = [...projectFiles, ...workflowFiles];
+            const allFiles = [...projectFiles, ...effectiveWorkflowFiles];
             // Add all files to the repository
             if (allFiles.length > 0) {
                 console.log(`Attempting to add ${allFiles.length} files to repository...`);
@@ -970,6 +978,145 @@ This issue is validated by test case(s): ${issue.testCaseIds.map(id => `#${id + 
             // with just CI/CD results if repository access fails
             return [];
         }
+    }
+    // Fetch the latest workflow run status for a repository (fallback when webhooks can't reach us)
+    async getLatestWorkflowConclusion(repoName) {
+        var _a;
+        await this.ensureInitialized();
+        if (this.isGitHubDisabled) {
+            console.log('[GitHub] Disabled – skipping getLatestWorkflowConclusion');
+            return null;
+        }
+        try {
+            const { data } = await this.octokit.actions.listWorkflowRunsForRepo({
+                owner: this.config.organizationName,
+                repo: repoName,
+                per_page: 1,
+                branch: 'main'
+            });
+            const run = (_a = data.workflow_runs) === null || _a === void 0 ? void 0 : _a[0];
+            if (!run)
+                return null;
+            return { status: run.status || 'queued', conclusion: run.conclusion || null };
+        }
+        catch (err) {
+            console.error('[GitHub] Failed to fetch latest workflow run:', err);
+            return null;
+        }
+    }
+    // Download and parse test result artifacts from the latest completed workflow run
+    async getLatestWorkflowTestResults(repoName) {
+        var _a;
+        await this.ensureInitialized();
+        if (this.isGitHubDisabled)
+            return [];
+        try {
+            const runs = await this.octokit.actions.listWorkflowRunsForRepo({
+                owner: this.config.organizationName,
+                repo: repoName,
+                per_page: 10,
+                status: 'completed'
+            });
+            const runList = runs.data.workflow_runs || [];
+            if (runList.length === 0)
+                return [];
+            for (const run of runList) {
+                try {
+                    const { data: artifactsResp } = await this.octokit.actions.listWorkflowRunArtifacts({
+                        owner: this.config.organizationName,
+                        repo: repoName,
+                        run_id: run.id,
+                        per_page: 100
+                    });
+                    const preferredArtifacts = ['test-results', 'jest-results', 'junit', 'results'];
+                    const ordered = artifactsResp.artifacts.sort((a, b) => {
+                        const ai = preferredArtifacts.findIndex(p => (a.name || '').includes(p));
+                        const bi = preferredArtifacts.findIndex(p => (b.name || '').includes(p));
+                        return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+                    });
+                    for (const artifact of ordered) {
+                        try {
+                            const resp = await this.octokit.actions.downloadArtifact({
+                                owner: this.config.organizationName,
+                                repo: repoName,
+                                artifact_id: artifact.id,
+                                archive_format: 'zip'
+                            });
+                            const AdmZip = require('adm-zip');
+                            const { parseStringPromise } = require('xml2js');
+                            const buffer = Buffer.isBuffer(resp.data) ? resp.data : Buffer.from(resp.data);
+                            const zip = new AdmZip(buffer);
+                            const entries = zip.getEntries();
+                            const jestEntry = entries.find((e) => /jest.*\.json$/i.test(e.entryName) || /test-results.*\.json$/i.test(e.entryName));
+                            const junitEntry = entries.find((e) => /junit.*\.xml$/i.test(e.entryName) || /test-results.*\.xml$/i.test(e.entryName) || /reports?\/.*\.xml$/i.test(e.entryName));
+                            if (jestEntry) {
+                                const raw = jestEntry.getData().toString('utf8');
+                                const json = JSON.parse(raw);
+                                const flattened = [];
+                                for (const suite of Array.isArray(json === null || json === void 0 ? void 0 : json.testResults) ? json.testResults : []) {
+                                    for (const ar of Array.isArray(suite === null || suite === void 0 ? void 0 : suite.assertionResults) ? suite.assertionResults : []) {
+                                        flattened.push({ title: (ar === null || ar === void 0 ? void 0 : ar.fullName) || (ar === null || ar === void 0 ? void 0 : ar.title) || 'Test', status: (ar === null || ar === void 0 ? void 0 : ar.status) || 'unknown', failureMessages: (ar === null || ar === void 0 ? void 0 : ar.failureMessages) || [] });
+                                    }
+                                }
+                                return flattened.map((item, index) => ({
+                                    testCase: index,
+                                    passed: item.status === 'passed',
+                                    title: item.title,
+                                    error: item.status === 'passed' ? undefined : (Array.isArray(item.failureMessages) ? item.failureMessages.join('\n\n') : 'Test failed')
+                                }));
+                            }
+                            if (junitEntry) {
+                                const raw = junitEntry.getData().toString('utf8');
+                                const xml = await parseStringPromise(raw, { explicitArray: false, mergeAttrs: true });
+                                const tests = [];
+                                const suitesAny = (((_a = xml === null || xml === void 0 ? void 0 : xml.testsuites) === null || _a === void 0 ? void 0 : _a.testsuite) || (xml === null || xml === void 0 ? void 0 : xml.testsuite) || []);
+                                const suiteArr = Array.isArray(suitesAny) ? suitesAny : [suitesAny];
+                                for (const suite of suiteArr) {
+                                    const casesAny = ((suite === null || suite === void 0 ? void 0 : suite.testcase) || []);
+                                    const caseArr = Array.isArray(casesAny) ? casesAny : [casesAny];
+                                    for (const c of caseArr) {
+                                        let errorMsg;
+                                        const failure = c === null || c === void 0 ? void 0 : c.failure;
+                                        if (failure) {
+                                            if (Array.isArray(failure)) {
+                                                errorMsg = failure.map((f) => (typeof f === 'string' ? f : (f === null || f === void 0 ? void 0 : f._) || '')).join('\n\n');
+                                            }
+                                            else if (typeof failure === 'string') {
+                                                errorMsg = failure;
+                                            }
+                                            else if (typeof failure === 'object') {
+                                                const underscore = failure === null || failure === void 0 ? void 0 : failure._;
+                                                errorMsg = typeof underscore === 'string' ? underscore : JSON.stringify(failure);
+                                            }
+                                        }
+                                        tests.push({ name: (c === null || c === void 0 ? void 0 : c.name) || 'Test', errorMsg });
+                                    }
+                                }
+                                return tests.map((t, index) => ({
+                                    testCase: index,
+                                    passed: !t.errorMsg,
+                                    title: t.name,
+                                    error: t.errorMsg,
+                                }));
+                            }
+                        }
+                        catch (artifactErr) {
+                            const msg = (artifactErr === null || artifactErr === void 0 ? void 0 : artifactErr.message) || artifactErr;
+                            console.warn('[GitHub] Failed to process artifact', artifact === null || artifact === void 0 ? void 0 : artifact.name, msg);
+                            continue;
+                        }
+                    }
+                }
+                catch (runErr) {
+                    console.warn('[GitHub] Skipping run id', run === null || run === void 0 ? void 0 : run.id, 'due to error:', (runErr === null || runErr === void 0 ? void 0 : runErr.message) || runErr);
+                    continue;
+                }
+            }
+        }
+        catch (err) {
+            console.error('[GitHub] Error fetching workflow artifacts:', (err === null || err === void 0 ? void 0 : err.message) || err);
+        }
+        return [];
     }
     /**
      * Gets the latest commit SHA from a repository

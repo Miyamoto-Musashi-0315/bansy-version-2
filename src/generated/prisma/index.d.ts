@@ -5365,6 +5365,8 @@ export namespace Prisma {
     id: string | null
     status: string | null
     suitabilityScore: number | null
+    individualRepoUrl: string | null
+    repoCreatedAt: Date | null
     createdAt: Date | null
     updatedAt: Date | null
     jobDescriptionId: string | null
@@ -5375,6 +5377,8 @@ export namespace Prisma {
     id: string | null
     status: string | null
     suitabilityScore: number | null
+    individualRepoUrl: string | null
+    repoCreatedAt: Date | null
     createdAt: Date | null
     updatedAt: Date | null
     jobDescriptionId: string | null
@@ -5386,6 +5390,8 @@ export namespace Prisma {
     status: number
     suitabilityScore: number
     suitabilityAnalysis: number
+    individualRepoUrl: number
+    repoCreatedAt: number
     createdAt: number
     updatedAt: number
     jobDescriptionId: number
@@ -5406,6 +5412,8 @@ export namespace Prisma {
     id?: true
     status?: true
     suitabilityScore?: true
+    individualRepoUrl?: true
+    repoCreatedAt?: true
     createdAt?: true
     updatedAt?: true
     jobDescriptionId?: true
@@ -5416,6 +5424,8 @@ export namespace Prisma {
     id?: true
     status?: true
     suitabilityScore?: true
+    individualRepoUrl?: true
+    repoCreatedAt?: true
     createdAt?: true
     updatedAt?: true
     jobDescriptionId?: true
@@ -5427,6 +5437,8 @@ export namespace Prisma {
     status?: true
     suitabilityScore?: true
     suitabilityAnalysis?: true
+    individualRepoUrl?: true
+    repoCreatedAt?: true
     createdAt?: true
     updatedAt?: true
     jobDescriptionId?: true
@@ -5525,6 +5537,8 @@ export namespace Prisma {
     status: string
     suitabilityScore: number | null
     suitabilityAnalysis: JsonValue | null
+    individualRepoUrl: string | null
+    repoCreatedAt: Date | null
     createdAt: Date
     updatedAt: Date
     jobDescriptionId: string
@@ -5555,6 +5569,8 @@ export namespace Prisma {
     status?: boolean
     suitabilityScore?: boolean
     suitabilityAnalysis?: boolean
+    individualRepoUrl?: boolean
+    repoCreatedAt?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     jobDescriptionId?: boolean
@@ -5570,6 +5586,8 @@ export namespace Prisma {
     status?: boolean
     suitabilityScore?: boolean
     suitabilityAnalysis?: boolean
+    individualRepoUrl?: boolean
+    repoCreatedAt?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     jobDescriptionId?: boolean
@@ -5583,6 +5601,8 @@ export namespace Prisma {
     status?: boolean
     suitabilityScore?: boolean
     suitabilityAnalysis?: boolean
+    individualRepoUrl?: boolean
+    repoCreatedAt?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     jobDescriptionId?: boolean
@@ -5596,13 +5616,15 @@ export namespace Prisma {
     status?: boolean
     suitabilityScore?: boolean
     suitabilityAnalysis?: boolean
+    individualRepoUrl?: boolean
+    repoCreatedAt?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     jobDescriptionId?: boolean
     resumeId?: boolean
   }
 
-  export type CandidateOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "status" | "suitabilityScore" | "suitabilityAnalysis" | "createdAt" | "updatedAt" | "jobDescriptionId" | "resumeId", ExtArgs["result"]["candidate"]>
+  export type CandidateOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "status" | "suitabilityScore" | "suitabilityAnalysis" | "individualRepoUrl" | "repoCreatedAt" | "createdAt" | "updatedAt" | "jobDescriptionId" | "resumeId", ExtArgs["result"]["candidate"]>
   export type CandidateInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     jobDescription?: boolean | JobDescriptionDefaultArgs<ExtArgs>
     resume?: boolean | ResumeDefaultArgs<ExtArgs>
@@ -5630,6 +5652,8 @@ export namespace Prisma {
       status: string
       suitabilityScore: number | null
       suitabilityAnalysis: Prisma.JsonValue | null
+      individualRepoUrl: string | null
+      repoCreatedAt: Date | null
       createdAt: Date
       updatedAt: Date
       jobDescriptionId: string
@@ -6064,6 +6088,8 @@ export namespace Prisma {
     readonly status: FieldRef<"Candidate", 'String'>
     readonly suitabilityScore: FieldRef<"Candidate", 'Float'>
     readonly suitabilityAnalysis: FieldRef<"Candidate", 'Json'>
+    readonly individualRepoUrl: FieldRef<"Candidate", 'String'>
+    readonly repoCreatedAt: FieldRef<"Candidate", 'DateTime'>
     readonly createdAt: FieldRef<"Candidate", 'DateTime'>
     readonly updatedAt: FieldRef<"Candidate", 'DateTime'>
     readonly jobDescriptionId: FieldRef<"Candidate", 'String'>
@@ -13469,6 +13495,8 @@ export namespace Prisma {
     status: 'status',
     suitabilityScore: 'suitabilityScore',
     suitabilityAnalysis: 'suitabilityAnalysis',
+    individualRepoUrl: 'individualRepoUrl',
+    repoCreatedAt: 'repoCreatedAt',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt',
     jobDescriptionId: 'jobDescriptionId',
@@ -13924,6 +13952,8 @@ export namespace Prisma {
     status?: StringFilter<"Candidate"> | string
     suitabilityScore?: FloatNullableFilter<"Candidate"> | number | null
     suitabilityAnalysis?: JsonNullableFilter<"Candidate">
+    individualRepoUrl?: StringNullableFilter<"Candidate"> | string | null
+    repoCreatedAt?: DateTimeNullableFilter<"Candidate"> | Date | string | null
     createdAt?: DateTimeFilter<"Candidate"> | Date | string
     updatedAt?: DateTimeFilter<"Candidate"> | Date | string
     jobDescriptionId?: StringFilter<"Candidate"> | string
@@ -13938,6 +13968,8 @@ export namespace Prisma {
     status?: SortOrder
     suitabilityScore?: SortOrderInput | SortOrder
     suitabilityAnalysis?: SortOrderInput | SortOrder
+    individualRepoUrl?: SortOrderInput | SortOrder
+    repoCreatedAt?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     jobDescriptionId?: SortOrder
@@ -13956,6 +13988,8 @@ export namespace Prisma {
     status?: StringFilter<"Candidate"> | string
     suitabilityScore?: FloatNullableFilter<"Candidate"> | number | null
     suitabilityAnalysis?: JsonNullableFilter<"Candidate">
+    individualRepoUrl?: StringNullableFilter<"Candidate"> | string | null
+    repoCreatedAt?: DateTimeNullableFilter<"Candidate"> | Date | string | null
     createdAt?: DateTimeFilter<"Candidate"> | Date | string
     updatedAt?: DateTimeFilter<"Candidate"> | Date | string
     jobDescriptionId?: StringFilter<"Candidate"> | string
@@ -13970,6 +14004,8 @@ export namespace Prisma {
     status?: SortOrder
     suitabilityScore?: SortOrderInput | SortOrder
     suitabilityAnalysis?: SortOrderInput | SortOrder
+    individualRepoUrl?: SortOrderInput | SortOrder
+    repoCreatedAt?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     jobDescriptionId?: SortOrder
@@ -13989,6 +14025,8 @@ export namespace Prisma {
     status?: StringWithAggregatesFilter<"Candidate"> | string
     suitabilityScore?: FloatNullableWithAggregatesFilter<"Candidate"> | number | null
     suitabilityAnalysis?: JsonNullableWithAggregatesFilter<"Candidate">
+    individualRepoUrl?: StringNullableWithAggregatesFilter<"Candidate"> | string | null
+    repoCreatedAt?: DateTimeNullableWithAggregatesFilter<"Candidate"> | Date | string | null
     createdAt?: DateTimeWithAggregatesFilter<"Candidate"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"Candidate"> | Date | string
     jobDescriptionId?: StringWithAggregatesFilter<"Candidate"> | string
@@ -14680,6 +14718,8 @@ export namespace Prisma {
     status: string
     suitabilityScore?: number | null
     suitabilityAnalysis?: NullableJsonNullValueInput | InputJsonValue
+    individualRepoUrl?: string | null
+    repoCreatedAt?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     jobDescription: JobDescriptionCreateNestedOneWithoutCandidatesInput
@@ -14692,6 +14732,8 @@ export namespace Prisma {
     status: string
     suitabilityScore?: number | null
     suitabilityAnalysis?: NullableJsonNullValueInput | InputJsonValue
+    individualRepoUrl?: string | null
+    repoCreatedAt?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     jobDescriptionId: string
@@ -14704,6 +14746,8 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     suitabilityScore?: NullableFloatFieldUpdateOperationsInput | number | null
     suitabilityAnalysis?: NullableJsonNullValueInput | InputJsonValue
+    individualRepoUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    repoCreatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     jobDescription?: JobDescriptionUpdateOneRequiredWithoutCandidatesNestedInput
@@ -14716,6 +14760,8 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     suitabilityScore?: NullableFloatFieldUpdateOperationsInput | number | null
     suitabilityAnalysis?: NullableJsonNullValueInput | InputJsonValue
+    individualRepoUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    repoCreatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     jobDescriptionId?: StringFieldUpdateOperationsInput | string
@@ -14728,6 +14774,8 @@ export namespace Prisma {
     status: string
     suitabilityScore?: number | null
     suitabilityAnalysis?: NullableJsonNullValueInput | InputJsonValue
+    individualRepoUrl?: string | null
+    repoCreatedAt?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     jobDescriptionId: string
@@ -14739,6 +14787,8 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     suitabilityScore?: NullableFloatFieldUpdateOperationsInput | number | null
     suitabilityAnalysis?: NullableJsonNullValueInput | InputJsonValue
+    individualRepoUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    repoCreatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -14748,6 +14798,8 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     suitabilityScore?: NullableFloatFieldUpdateOperationsInput | number | null
     suitabilityAnalysis?: NullableJsonNullValueInput | InputJsonValue
+    individualRepoUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    repoCreatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     jobDescriptionId?: StringFieldUpdateOperationsInput | string
@@ -15582,6 +15634,17 @@ export namespace Prisma {
     not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
   }
 
+  export type DateTimeNullableFilter<$PrismaModel = never> = {
+    equals?: Date | string | DateTimeFieldRefInput<$PrismaModel> | null
+    in?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
+    notIn?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
+    lt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    lte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    not?: NestedDateTimeNullableFilter<$PrismaModel> | Date | string | null
+  }
+
   export type JobDescriptionScalarRelationFilter = {
     is?: JobDescriptionWhereInput
     isNot?: JobDescriptionWhereInput
@@ -15612,6 +15675,8 @@ export namespace Prisma {
     status?: SortOrder
     suitabilityScore?: SortOrder
     suitabilityAnalysis?: SortOrder
+    individualRepoUrl?: SortOrder
+    repoCreatedAt?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     jobDescriptionId?: SortOrder
@@ -15626,6 +15691,8 @@ export namespace Prisma {
     id?: SortOrder
     status?: SortOrder
     suitabilityScore?: SortOrder
+    individualRepoUrl?: SortOrder
+    repoCreatedAt?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     jobDescriptionId?: SortOrder
@@ -15636,6 +15703,8 @@ export namespace Prisma {
     id?: SortOrder
     status?: SortOrder
     suitabilityScore?: SortOrder
+    individualRepoUrl?: SortOrder
+    repoCreatedAt?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     jobDescriptionId?: SortOrder
@@ -15686,6 +15755,20 @@ export namespace Prisma {
     _count?: NestedIntNullableFilter<$PrismaModel>
     _min?: NestedJsonNullableFilter<$PrismaModel>
     _max?: NestedJsonNullableFilter<$PrismaModel>
+  }
+
+  export type DateTimeNullableWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: Date | string | DateTimeFieldRefInput<$PrismaModel> | null
+    in?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
+    notIn?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
+    lt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    lte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    not?: NestedDateTimeNullableWithAggregatesFilter<$PrismaModel> | Date | string | null
+    _count?: NestedIntNullableFilter<$PrismaModel>
+    _min?: NestedDateTimeNullableFilter<$PrismaModel>
+    _max?: NestedDateTimeNullableFilter<$PrismaModel>
   }
 
   export type ResumeCountOrderByAggregateInput = {
@@ -15753,17 +15836,6 @@ export namespace Prisma {
   export type BoolFilter<$PrismaModel = never> = {
     equals?: boolean | BooleanFieldRefInput<$PrismaModel>
     not?: NestedBoolFilter<$PrismaModel> | boolean
-  }
-
-  export type DateTimeNullableFilter<$PrismaModel = never> = {
-    equals?: Date | string | DateTimeFieldRefInput<$PrismaModel> | null
-    in?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
-    notIn?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
-    lt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    lte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    not?: NestedDateTimeNullableFilter<$PrismaModel> | Date | string | null
   }
 
   export type TestCaseListRelationFilter = {
@@ -15861,20 +15933,6 @@ export namespace Prisma {
     _count?: NestedIntFilter<$PrismaModel>
     _min?: NestedBoolFilter<$PrismaModel>
     _max?: NestedBoolFilter<$PrismaModel>
-  }
-
-  export type DateTimeNullableWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: Date | string | DateTimeFieldRefInput<$PrismaModel> | null
-    in?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
-    notIn?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
-    lt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    lte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    not?: NestedDateTimeNullableWithAggregatesFilter<$PrismaModel> | Date | string | null
-    _count?: NestedIntNullableFilter<$PrismaModel>
-    _min?: NestedDateTimeNullableFilter<$PrismaModel>
-    _max?: NestedDateTimeNullableFilter<$PrismaModel>
   }
 
   export type IntNullableFilter<$PrismaModel = never> = {
@@ -16357,6 +16415,10 @@ export namespace Prisma {
     divide?: number
   }
 
+  export type NullableDateTimeFieldUpdateOperationsInput = {
+    set?: Date | string | null
+  }
+
   export type JobDescriptionUpdateOneRequiredWithoutCandidatesNestedInput = {
     create?: XOR<JobDescriptionCreateWithoutCandidatesInput, JobDescriptionUncheckedCreateWithoutCandidatesInput>
     connectOrCreate?: JobDescriptionCreateOrConnectWithoutCandidatesInput
@@ -16507,10 +16569,6 @@ export namespace Prisma {
 
   export type BoolFieldUpdateOperationsInput = {
     set?: boolean
-  }
-
-  export type NullableDateTimeFieldUpdateOperationsInput = {
-    set?: Date | string | null
   }
 
   export type JobDescriptionUpdateOneRequiredWithoutTestNestedInput = {
@@ -16895,6 +16953,17 @@ export namespace Prisma {
     not?: NestedFloatNullableFilter<$PrismaModel> | number | null
   }
 
+  export type NestedDateTimeNullableFilter<$PrismaModel = never> = {
+    equals?: Date | string | DateTimeFieldRefInput<$PrismaModel> | null
+    in?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
+    notIn?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
+    lt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    lte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    not?: NestedDateTimeNullableFilter<$PrismaModel> | Date | string | null
+  }
+
   export type NestedFloatNullableWithAggregatesFilter<$PrismaModel = never> = {
     equals?: number | FloatFieldRefInput<$PrismaModel> | null
     in?: number[] | ListFloatFieldRefInput<$PrismaModel> | null
@@ -16934,12 +17003,7 @@ export namespace Prisma {
     not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
   }
 
-  export type NestedBoolFilter<$PrismaModel = never> = {
-    equals?: boolean | BooleanFieldRefInput<$PrismaModel>
-    not?: NestedBoolFilter<$PrismaModel> | boolean
-  }
-
-  export type NestedDateTimeNullableFilter<$PrismaModel = never> = {
+  export type NestedDateTimeNullableWithAggregatesFilter<$PrismaModel = never> = {
     equals?: Date | string | DateTimeFieldRefInput<$PrismaModel> | null
     in?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
     notIn?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
@@ -16947,7 +17011,15 @@ export namespace Prisma {
     lte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
     gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
     gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    not?: NestedDateTimeNullableFilter<$PrismaModel> | Date | string | null
+    not?: NestedDateTimeNullableWithAggregatesFilter<$PrismaModel> | Date | string | null
+    _count?: NestedIntNullableFilter<$PrismaModel>
+    _min?: NestedDateTimeNullableFilter<$PrismaModel>
+    _max?: NestedDateTimeNullableFilter<$PrismaModel>
+  }
+
+  export type NestedBoolFilter<$PrismaModel = never> = {
+    equals?: boolean | BooleanFieldRefInput<$PrismaModel>
+    not?: NestedBoolFilter<$PrismaModel> | boolean
   }
   export type NestedJsonFilter<$PrismaModel = never> =
     | PatchUndefined<
@@ -16979,20 +17051,6 @@ export namespace Prisma {
     _count?: NestedIntFilter<$PrismaModel>
     _min?: NestedBoolFilter<$PrismaModel>
     _max?: NestedBoolFilter<$PrismaModel>
-  }
-
-  export type NestedDateTimeNullableWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: Date | string | DateTimeFieldRefInput<$PrismaModel> | null
-    in?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
-    notIn?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
-    lt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    lte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    not?: NestedDateTimeNullableWithAggregatesFilter<$PrismaModel> | Date | string | null
-    _count?: NestedIntNullableFilter<$PrismaModel>
-    _min?: NestedDateTimeNullableFilter<$PrismaModel>
-    _max?: NestedDateTimeNullableFilter<$PrismaModel>
   }
 
   export type NestedIntNullableWithAggregatesFilter<$PrismaModel = never> = {
@@ -17319,6 +17377,8 @@ export namespace Prisma {
     status: string
     suitabilityScore?: number | null
     suitabilityAnalysis?: NullableJsonNullValueInput | InputJsonValue
+    individualRepoUrl?: string | null
+    repoCreatedAt?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     resume: ResumeCreateNestedOneWithoutCandidatesInput
@@ -17330,6 +17390,8 @@ export namespace Prisma {
     status: string
     suitabilityScore?: number | null
     suitabilityAnalysis?: NullableJsonNullValueInput | InputJsonValue
+    individualRepoUrl?: string | null
+    repoCreatedAt?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     resumeId: string
@@ -17452,6 +17514,8 @@ export namespace Prisma {
     status?: StringFilter<"Candidate"> | string
     suitabilityScore?: FloatNullableFilter<"Candidate"> | number | null
     suitabilityAnalysis?: JsonNullableFilter<"Candidate">
+    individualRepoUrl?: StringNullableFilter<"Candidate"> | string | null
+    repoCreatedAt?: DateTimeNullableFilter<"Candidate"> | Date | string | null
     createdAt?: DateTimeFilter<"Candidate"> | Date | string
     updatedAt?: DateTimeFilter<"Candidate"> | Date | string
     jobDescriptionId?: StringFilter<"Candidate"> | string
@@ -17658,6 +17722,8 @@ export namespace Prisma {
     status: string
     suitabilityScore?: number | null
     suitabilityAnalysis?: NullableJsonNullValueInput | InputJsonValue
+    individualRepoUrl?: string | null
+    repoCreatedAt?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     jobDescription: JobDescriptionCreateNestedOneWithoutCandidatesInput
@@ -17669,6 +17735,8 @@ export namespace Prisma {
     status: string
     suitabilityScore?: number | null
     suitabilityAnalysis?: NullableJsonNullValueInput | InputJsonValue
+    individualRepoUrl?: string | null
+    repoCreatedAt?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     jobDescriptionId: string
@@ -18313,6 +18381,8 @@ export namespace Prisma {
     status: string
     suitabilityScore?: number | null
     suitabilityAnalysis?: NullableJsonNullValueInput | InputJsonValue
+    individualRepoUrl?: string | null
+    repoCreatedAt?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     jobDescription: JobDescriptionCreateNestedOneWithoutCandidatesInput
@@ -18324,6 +18394,8 @@ export namespace Prisma {
     status: string
     suitabilityScore?: number | null
     suitabilityAnalysis?: NullableJsonNullValueInput | InputJsonValue
+    individualRepoUrl?: string | null
+    repoCreatedAt?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     jobDescriptionId: string
@@ -18392,6 +18464,8 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     suitabilityScore?: NullableFloatFieldUpdateOperationsInput | number | null
     suitabilityAnalysis?: NullableJsonNullValueInput | InputJsonValue
+    individualRepoUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    repoCreatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     jobDescription?: JobDescriptionUpdateOneRequiredWithoutCandidatesNestedInput
@@ -18403,6 +18477,8 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     suitabilityScore?: NullableFloatFieldUpdateOperationsInput | number | null
     suitabilityAnalysis?: NullableJsonNullValueInput | InputJsonValue
+    individualRepoUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    repoCreatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     jobDescriptionId?: StringFieldUpdateOperationsInput | string
@@ -18601,6 +18677,8 @@ export namespace Prisma {
     status: string
     suitabilityScore?: number | null
     suitabilityAnalysis?: NullableJsonNullValueInput | InputJsonValue
+    individualRepoUrl?: string | null
+    repoCreatedAt?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     resumeId: string
@@ -18611,6 +18689,8 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     suitabilityScore?: NullableFloatFieldUpdateOperationsInput | number | null
     suitabilityAnalysis?: NullableJsonNullValueInput | InputJsonValue
+    individualRepoUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    repoCreatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     resume?: ResumeUpdateOneRequiredWithoutCandidatesNestedInput
@@ -18622,6 +18702,8 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     suitabilityScore?: NullableFloatFieldUpdateOperationsInput | number | null
     suitabilityAnalysis?: NullableJsonNullValueInput | InputJsonValue
+    individualRepoUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    repoCreatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     resumeId?: StringFieldUpdateOperationsInput | string
@@ -18633,6 +18715,8 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     suitabilityScore?: NullableFloatFieldUpdateOperationsInput | number | null
     suitabilityAnalysis?: NullableJsonNullValueInput | InputJsonValue
+    individualRepoUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    repoCreatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     resumeId?: StringFieldUpdateOperationsInput | string
@@ -18687,6 +18771,8 @@ export namespace Prisma {
     status: string
     suitabilityScore?: number | null
     suitabilityAnalysis?: NullableJsonNullValueInput | InputJsonValue
+    individualRepoUrl?: string | null
+    repoCreatedAt?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     jobDescriptionId: string
@@ -18697,6 +18783,8 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     suitabilityScore?: NullableFloatFieldUpdateOperationsInput | number | null
     suitabilityAnalysis?: NullableJsonNullValueInput | InputJsonValue
+    individualRepoUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    repoCreatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     jobDescription?: JobDescriptionUpdateOneRequiredWithoutCandidatesNestedInput
@@ -18708,6 +18796,8 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     suitabilityScore?: NullableFloatFieldUpdateOperationsInput | number | null
     suitabilityAnalysis?: NullableJsonNullValueInput | InputJsonValue
+    individualRepoUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    repoCreatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     jobDescriptionId?: StringFieldUpdateOperationsInput | string
@@ -18719,6 +18809,8 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     suitabilityScore?: NullableFloatFieldUpdateOperationsInput | number | null
     suitabilityAnalysis?: NullableJsonNullValueInput | InputJsonValue
+    individualRepoUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    repoCreatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     jobDescriptionId?: StringFieldUpdateOperationsInput | string

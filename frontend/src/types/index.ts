@@ -71,6 +71,8 @@ export interface Candidate {
   status: string;
   suitabilityScore?: number;
   suitabilityAnalysis?: Record<string, any>;
+  individualRepoUrl?: string;
+  repoCreatedAt?: string;
   createdAt: string;
   updatedAt: string;
   jobDescriptionId: string;

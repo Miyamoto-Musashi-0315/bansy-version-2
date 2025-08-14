@@ -18,7 +18,7 @@ export interface Test {
 interface SubmissionResult {
   submissionId?: string;
   id?: string;
-  status: 'success' | 'failure' | 'pending';
+  status: 'success' | 'failure' | 'pending' | 'completed' | 'failed';
   results?: Array<{
     testCase: number;
     passed: boolean;
@@ -37,6 +37,12 @@ export const testService = {
   // Fetch a specific test by ID
   async getTest(testId: string): Promise<Test> {
     const response = await axios.get(`/api/tests/${testId}`);
+    return response.data;
+  },
+
+  // NEW: Get latest submission for a test (normalized)
+  async getLatestSubmissionForTest(testId: string): Promise<SubmissionDetails | null> {
+    const response = await axios.get(`/api/tests/${testId}/latest-submission`);
     return response.data;
   },
 

@@ -1,69 +1,87 @@
-import { login as apiLogin, register as apiRegister } from './api';
-import type { LoginCredentials, RegisterData, User } from '../types';
 import { logger } from '../utils/logger';
+import type { User, LoginCredentials, RegisterData } from '../types';
+import { login as apiLogin, register as apiRegister } from './api';
 
 export class AuthService {
   private static instance: AuthService;
   private user: User | null = null;
   private token: string | null = null;
+  private tokenObtainedAt: number = 0; // Track when token was obtained
 
   private constructor() {
-    // Load user and token from localStorage on initialization
-    const storedUser = localStorage.getItem('user');
-    const storedToken = localStorage.getItem('token');
-    
-    if (storedUser && storedToken) {
-      try {
-        this.user = JSON.parse(storedUser);
-        this.token = storedToken;
-        logger.info('User session restored', { userId: this.user?.id });
-      } catch (error) {
-        logger.error('Failed to parse stored user data', error);
-        this.clearSession();
-      }
-    } else {
-      logger.debug('No stored session found');
-    }
+    this.loadSession();
   }
 
   public static getInstance(): AuthService {
     if (!AuthService.instance) {
       AuthService.instance = new AuthService();
-      logger.debug('AuthService instance created');
     }
+
     return AuthService.instance;
   }
 
   public async validateToken(): Promise<boolean> {
+    const TIMEOUT_MS = 2000; // Reduced from 5000ms to 2000ms for better UX
+    const FRESH_TOKEN_DURATION = 30000; // 30 seconds - consider token fresh if obtained recently
+    
+    console.log('AuthService: validateToken() called');
+    
     if (!this.token) {
+      console.log('AuthService: No token available');
       return false;
     }
 
+    // Skip validation if token was obtained recently (fresh token)
+    const now = Date.now();
+    const tokenAge = now - this.tokenObtainedAt;
+    console.log('AuthService: Token age:', tokenAge, 'ms (fresh if < 30000ms)');
+    
+    if (this.tokenObtainedAt && tokenAge < FRESH_TOKEN_DURATION) {
+      console.log('AuthService: Skipping validation for fresh token');
+      return true;
+    }
+
+    console.log('AuthService: Performing token validation via API');
+
     try {
-      // Resolve API base URL in the same way api.ts does to ensure `/api` is present
-      const rawBaseUrl = (import.meta.env.VITE_API_URL as string | undefined) || 'http://localhost:3001/api';
-      const baseURL = rawBaseUrl.endsWith('/api') ? rawBaseUrl : `${rawBaseUrl.replace(/\/+$/, '')}/api`;
+      // Dynamically import the shared axios instance only when needed to avoid a
+      // circular dependency with `api` importing `auth`.
+      const { api } = await import('./api');
 
-      // Make a simple API call to validate the token
-      const response = await fetch(`${baseURL}/auth/validate`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${this.token}`,
-          'Content-Type': 'application/json',
-        },
+      console.log('AuthService: Making API call to /auth/validate');
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        console.log('AuthService: API call timeout, aborting');
+        controller.abort();
+      }, TIMEOUT_MS);
+
+      const response = await api.get('/auth/validate', {
+        signal: controller.signal,
+        timeout: TIMEOUT_MS,
       });
-
-      if (response.ok) {
-        logger.debug('Token validation successful');
-        return true;
+      
+      clearTimeout(timeoutId);
+      console.log('AuthService: Token validation successful', response.data);
+      return true;
+    } catch (error: unknown) {
+      const err = error as { name?: string; code?: string; message?: string };
+      console.error('AuthService: Token validation failed:', {
+        name: err.name,
+        code: err.code,
+        message: err.message
+      });
+      
+      if (err.name === 'AbortError' || err.code === 'ECONNABORTED') {
+        console.log('AuthService: Token validation timed out - treating as invalid');
       } else {
-        logger.warn('Token validation failed', { status: response.status });
-        this.clearSession();
-        return false;
+        console.log('AuthService: Token validation error - clearing session');
       }
-    } catch (error) {
-      logger.error('Token validation error', error);
-      this.clearSession();
+
+      // Only clear session on actual auth failures, not on network issues
+      if (err.name !== 'AbortError' && err.code !== 'ECONNABORTED') {
+        this.clearSession();
+      }
       return false;
     }
   }
@@ -73,6 +91,7 @@ export class AuthService {
     try {
       const { user, token } = await apiLogin(credentials);
       this.setSession(user, token);
+      this.tokenObtainedAt = Date.now(); // Mark token as fresh
       logger.info('Login successful, session established', { userId: user.id });
       return user;
     } catch (error) {
@@ -86,6 +105,7 @@ export class AuthService {
     try {
       const { user, token } = await apiRegister(data);
       this.setSession(user, token);
+      this.tokenObtainedAt = Date.now(); // Mark token as fresh
       logger.info('Registration successful, session established', { userId: user.id });
       return user;
     } catch (error) {
@@ -95,48 +115,84 @@ export class AuthService {
   }
 
   public logout(): void {
-    logger.info('Logging out user', { userId: this.user?.id });
+    logger.info('User logout initiated');
     this.clearSession();
-    logger.info('User logged out, session cleared');
+    logger.info('Session cleared successfully');
+  }
+
+  public isAuthenticated(): boolean {
+    return !!(this.token && this.user);
+  }
+
+  public isHR(): boolean {
+    return this.user?.role === 'HR';
   }
 
   public getUser(): User | null {
     return this.user;
   }
 
-  public isAuthenticated(): boolean {
-    const isAuth = !!this.token && !!this.user;
-    logger.debug('Checking authentication status', { 
-      isAuthenticated: isAuth,
-      userId: this.user?.id 
-    });
-    return isAuth;
-  }
-
-  public isHR(): boolean {
-    const isHR = this.user?.role === 'HR';
-    logger.debug('Checking HR status', { 
-      isHR,
-      userId: this.user?.id,
-      role: this.user?.role 
-    });
-    return isHR;
+  public getToken(): string | null {
+    return this.token;
   }
 
   private setSession(user: User, token: string): void {
-    logger.debug('Setting up user session', { userId: user.id });
-    localStorage.setItem('user', JSON.stringify(user));
-    localStorage.setItem('token', token);
     this.user = user;
     this.token = token;
-    logger.info('User session established', { userId: user.id });
+    this.tokenObtainedAt = Date.now();
+    
+    // Persist to localStorage
+    localStorage.setItem('user', JSON.stringify(user));
+    localStorage.setItem('token', token);
+    localStorage.setItem('tokenObtainedAt', this.tokenObtainedAt.toString());
+    
+    logger.debug('Session data stored', { userId: user.id });
+  }
+
+  private loadSession(): void {
+    console.log('AuthService: Loading session from localStorage');
+    try {
+      const storedUser = localStorage.getItem('user');
+      const storedToken = localStorage.getItem('token');
+      const storedTokenTime = localStorage.getItem('tokenObtainedAt');
+
+      console.log('AuthService: Stored data found:', {
+        hasUser: !!storedUser,
+        hasToken: !!storedToken,
+        hasTokenTime: !!storedTokenTime,
+        tokenTime: storedTokenTime
+      });
+
+      if (storedUser && storedToken) {
+        this.user = JSON.parse(storedUser);
+        this.token = storedToken;
+        this.tokenObtainedAt = storedTokenTime ? parseInt(storedTokenTime, 10) : 0;
+        
+        console.log('AuthService: Session loaded successfully', { 
+          userId: this.user?.id,
+          tokenObtainedAt: this.tokenObtainedAt,
+          tokenAge: Date.now() - this.tokenObtainedAt
+        });
+      } else {
+        console.log('AuthService: No complete session data found in localStorage');
+      }
+    } catch (error) {
+      console.error('AuthService: Failed to load session from storage', error);
+      this.clearSession();
+    }
   }
 
   private clearSession(): void {
-    localStorage.removeItem('user');
-    localStorage.removeItem('token');
     this.user = null;
     this.token = null;
+    this.tokenObtainedAt = 0;
+    
+    // Clear localStorage
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
+    localStorage.removeItem('tokenObtainedAt');
+    
+    logger.debug('Session cleared');
   }
 }
 

@@ -265,6 +265,26 @@ const JdDetailsPage = () => {
                         <div>
                           <Text fw={500}>{candidate.resume?.email}</Text>
                           <Text size="sm" c="dimmed">Applied on {new Date(candidate.createdAt).toLocaleDateString()}</Text>
+                          {hasBeenSentTest && candidate.individualRepoUrl && (
+                            <Group gap="xs" mt="xs">
+                              <Text size="xs" c="dimmed">Repository:</Text>
+                              <Button
+                                size="xs"
+                                variant="subtle"
+                                component="a"
+                                href={candidate.individualRepoUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                View GitHub Repo
+                              </Button>
+                              {candidate.repoCreatedAt && (
+                                <Text size="xs" c="dimmed">
+                                  Created: {new Date(candidate.repoCreatedAt).toLocaleDateString()}
+                                </Text>
+                              )}
+                            </Group>
+                          )}
                         </div>
                       </Group>
                       <Group>

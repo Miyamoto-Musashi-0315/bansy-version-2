@@ -256,4 +256,34 @@ router.post('/:testId/run', async (req, res) => {
         res.status(500).json({ error: 'Failed to run tests' });
     }
 });
+// Get latest submission for a specific test (normalized for frontend)
+router.get('/:testId/latest-submission', async (req, res) => {
+    var _a, _b, _c;
+    try {
+        const { testId } = req.params;
+        console.log(`[tests.latest-submission] Fetching latest submission for testId=${testId}`);
+        const submission = await prisma_1.default.submission.findFirst({
+            where: { testId },
+            orderBy: { createdAt: 'desc' }
+        });
+        if (!submission) {
+            console.log(`[tests.latest-submission] No submissions found for testId=${testId}`);
+            return res.json(null);
+        }
+        const result = submission.result || {};
+        const normalized = {
+            id: submission.id,
+            status: submission.status,
+            results: Array.isArray(result === null || result === void 0 ? void 0 : result.results) ? result.results : [],
+            ciCdScore: (_b = (_a = result === null || result === void 0 ? void 0 : result.ciCdScore) !== null && _a !== void 0 ? _a : result === null || result === void 0 ? void 0 : result.cicdScore) !== null && _b !== void 0 ? _b : null,
+            llmScore: (_c = result === null || result === void 0 ? void 0 : result.llmScore) !== null && _c !== void 0 ? _c : null,
+        };
+        console.log(`[tests.latest-submission] Returning submission ${submission.id} with status=${submission.status}`);
+        return res.json(normalized);
+    }
+    catch (error) {
+        console.error('[tests.latest-submission] Error:', (error === null || error === void 0 ? void 0 : error.message) || error);
+        res.status(500).json({ error: 'Failed to fetch latest submission' });
+    }
+});
 exports.default = router;

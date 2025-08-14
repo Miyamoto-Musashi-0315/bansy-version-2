@@ -154,6 +154,8 @@ exports.Prisma.CandidateScalarFieldEnum = {
   status: 'status',
   suitabilityScore: 'suitabilityScore',
   suitabilityAnalysis: 'suitabilityAnalysis',
+  individualRepoUrl: 'individualRepoUrl',
+  repoCreatedAt: 'repoCreatedAt',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
   jobDescriptionId: 'jobDescriptionId',

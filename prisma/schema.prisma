@@ -68,6 +68,8 @@ model Candidate {
   status              String         // e.g., "PendingReview", "TestSent", "Completed"
   suitabilityScore    Float?         // The AI's score for the resume against the JD
   suitabilityAnalysis Json?          // The AI's rationale for the score
+  individualRepoUrl   String?        // Individual GitHub repository URL for this candidate
+  repoCreatedAt       DateTime?      // When the individual repository was created
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
   jobDescription      JobDescription @relation(fields: [jobDescriptionId], references: [id])

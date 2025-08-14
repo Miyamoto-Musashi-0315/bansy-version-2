@@ -26,4 +26,8 @@ router.get('/:id/tracking', auth_1.authenticateUser, jdController_1.jdController
 router.get('/candidate/:candidateId/assessment', auth_1.authenticateUser, jdController_1.jdController.getCandidateAssessmentDetails);
 // Final assessment results route
 router.get('/:id/results', auth_1.authenticateUser, jdController_1.jdController.getFinalAssessmentResults);
+// Repository management routes
+router.get('/:id/repositories', jdController_1.jdController.getCandidateRepositories);
+router.post('/:id/repositories/archive', jdController_1.jdController.archiveRepositories);
+router.get('/candidate/:candidateId/repository-status', jdController_1.jdController.getCandidateRepositoryStatus);
 exports.default = router;

@@ -30,7 +30,7 @@ export const generateProjectForJd = async (jdId: string): Promise<{
   test: Test; 
   githubRepository: string 
 }> => {
-  const { data } = await api.post(`/ai/jds/${jdId}/generate-project`);
+  const { data } = await api.post(`/ai/jds/${jdId}/generate-project`, undefined, { timeout: 60000 });
   return data;
 };
 
@@ -42,6 +42,13 @@ export const sendTestsToCandiidates = async (jdId: string, candidateIds: string[
     testUrl: string;
   }>;
 }> => {
-  const { data } = await api.post(`/jds/${jdId}/send-tests`, { candidateIds });
-  return data;
+  const { data } = await api.post(`/jds/${jdId}/send-tests`, { candidateIds }, { timeout: 60000 });
+  type BackendResult = { candidateId: string; email: string; testUrl: string; githubRepository: string; success: boolean; error?: string };
+  const results: BackendResult[] = Array.isArray(data.results) ? data.results : [];
+  const sentTo = results.filter((r) => r.success).map((r) => ({
+    candidateId: r.candidateId,
+    email: r.email,
+    testUrl: r.testUrl,
+  }));
+  return { ...data, sentTo };
 };

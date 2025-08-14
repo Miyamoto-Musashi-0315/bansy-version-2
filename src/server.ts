@@ -21,6 +21,17 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// Debug logging endpoint for frontend errors
+app.post('/api/debug-log', (req, res) => {
+  const { type, message, stack, timestamp } = req.body;
+  console.log(`🔍 FRONTEND ${type}:`, {
+    message,
+    stack: stack ? stack.substring(0, 500) : undefined, // Truncate long stacks
+    timestamp: timestamp || new Date().toISOString()
+  });
+  res.status(200).json({ logged: true });
+});
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/tests', testRoutes);

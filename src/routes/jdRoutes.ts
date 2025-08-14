@@ -36,4 +36,9 @@ router.get('/candidate/:candidateId/assessment', authenticateUser, jdController.
 // Final assessment results route
 router.get('/:id/results', authenticateUser, jdController.getFinalAssessmentResults);
 
+// Repository management routes
+router.get('/:id/repositories', jdController.getCandidateRepositories);
+router.post('/:id/repositories/archive', jdController.archiveRepositories);
+router.get('/candidate/:candidateId/repository-status', jdController.getCandidateRepositoryStatus);
+
 export default router;

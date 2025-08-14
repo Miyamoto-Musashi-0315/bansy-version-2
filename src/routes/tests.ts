@@ -282,4 +282,37 @@ router.post('/:testId/run', async (req, res) => {
   }
 });
 
+// Get latest submission for a specific test (normalized for frontend)
+router.get('/:testId/latest-submission', async (req, res) => {
+  try {
+    const { testId } = req.params;
+    console.log(`[tests.latest-submission] Fetching latest submission for testId=${testId}`);
+
+    const submission = await prisma.submission.findFirst({
+      where: { testId },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    if (!submission) {
+      console.log(`[tests.latest-submission] No submissions found for testId=${testId}`);
+      return res.json(null);
+    }
+
+    const result: any = submission.result || {};
+    const normalized = {
+      id: submission.id,
+      status: submission.status,
+      results: Array.isArray(result?.results) ? result.results : [],
+      ciCdScore: result?.ciCdScore ?? result?.cicdScore ?? null,
+      llmScore: result?.llmScore ?? null,
+    };
+
+    console.log(`[tests.latest-submission] Returning submission ${submission.id} with status=${submission.status}`);
+    return res.json(normalized);
+  } catch (error: any) {
+    console.error('[tests.latest-submission] Error:', error?.message || error);
+    res.status(500).json({ error: 'Failed to fetch latest submission' });
+  }
+});
+
 export default router;

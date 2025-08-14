@@ -252,6 +252,15 @@ async function handleWorkflowEvent(payload) {
                 });
                 if (pendingSubmission) {
                     const finalStatus = conclusion === 'success' ? 'success' : 'failure';
+                    // Try to fetch per-test results from workflow artifacts
+                    let detailedResults = [];
+                    try {
+                        detailedResults = await githubService.getLatestWorkflowTestResults(repoName);
+                        console.log(`[Webhook] Collected ${detailedResults.length} per-test results from artifacts`);
+                    }
+                    catch (artifactErr) {
+                        console.warn('[Webhook] Failed to fetch artifact results:', (artifactErr === null || artifactErr === void 0 ? void 0 : artifactErr.message) || artifactErr);
+                    }
                     await prisma.submission.update({
                         where: { id: pendingSubmission.id },
                         data: {
@@ -259,7 +268,8 @@ async function handleWorkflowEvent(payload) {
                             // Store minimal result object so the frontend can differentiate pass/fail
                             result: {
                                 status: finalStatus,
-                                cicdScore: finalStatus === 'success' ? 40 : 0,
+                                ciCdScore: finalStatus === 'success' ? 40 : 0,
+                                results: detailedResults
                             },
                         },
                     });

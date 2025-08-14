@@ -179,6 +179,17 @@ exports.aiController = {
                     }),
                 });
             }
+            // Insert project files into TestFile table for future reuse
+            console.log(`Creating ${projectTemplate.projectFiles.length} test files...`);
+            if (projectTemplate.projectFiles.length > 0) {
+                await prismaClient_1.prisma.testFile.createMany({
+                    data: projectTemplate.projectFiles.map(file => ({
+                        path: file.path,
+                        content: file.content,
+                        testId: updatedTest.id,
+                    })),
+                });
+            }
             const finalTest = await prismaClient_1.prisma.test.findUnique({
                 where: { id: updatedTest.id },
                 include: { testCases: true },
@@ -300,11 +311,13 @@ exports.aiController = {
                         repoUrl,
                         cloneUrl,
                     });
-                    // Update candidate status to 'TestSent'
+                    // Update candidate status to 'TestSent' and store repository URL
                     await prismaClient_1.prisma.candidate.update({
                         where: { id: candidate.id },
                         data: {
                             status: 'TestSent',
+                            individualRepoUrl: repoUrl,
+                            repoCreatedAt: new Date(),
                         },
                     });
                     console.log(`Repository created for candidate ${candidate.id}: ${repoUrl}`);

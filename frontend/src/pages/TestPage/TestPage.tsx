@@ -6,7 +6,7 @@ import { testService, Test } from '../../services/testService';
 
 interface SubmissionState {
   submissionId: string;
-  status: 'pending' | 'success' | 'failure';
+  status: 'pending' | 'success' | 'failure' | 'completed' | 'failed';
   ciCdScore?: number;
   llmScore?: number;
   results?: Array<{
@@ -15,6 +15,14 @@ interface SubmissionState {
     output?: string;
     error?: string;
   }>;
+}
+
+function normalizeStatus(input: unknown): SubmissionState['status'] {
+  const allowed: SubmissionState['status'][] = ['pending', 'success', 'failure', 'completed', 'failed'];
+  if (typeof input === 'string' && (allowed as string[]).includes(input)) {
+    return input as SubmissionState['status'];
+  }
+  return 'pending';
 }
 
 export function TestPage() {
@@ -26,20 +34,32 @@ export function TestPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submission, setSubmission] = useState<SubmissionState | null>(null);
 
-
   useEffect(() => {
     const fetchTest = async () => {
       try {
         if (!testId) return;
         setLoading(true);
-        
+        console.log('[TestPage] Fetching test', testId);
         const data = await testService.getTest(testId);
-        console.log('Fetched test data in TestPage:', data);
+        console.log('[TestPage] getTest result:', data);
         setTest(data);
 
+        // NEW: fetch latest submission so page reflects CI state on reload
+        console.log('[TestPage] Fetching latest submission for test', testId);
+        const latest = await testService.getLatestSubmissionForTest(testId);
+        console.log('[TestPage] latestSubmission:', latest);
+        if (latest) {
+          setSubmission({
+            submissionId: latest.id ?? '',
+            status: normalizeStatus(latest.status),
+            ciCdScore: latest.ciCdScore,
+            llmScore: latest.llmScore,
+            results: latest.results,
+          });
+        }
       } catch (err) {
         setError('Failed to load test data. Please try again.');
-        console.error('Error in fetchTest:', err);
+        console.error('[TestPage] Error in fetchTest:', err);
       } finally {
         setLoading(false);
       }
@@ -52,13 +72,17 @@ export function TestPage() {
   useEffect(() => {
     if (!submission || submission.status !== 'pending') return;
 
+    console.log('[TestPage] Starting polling for submission', submission.submissionId);
     const id = setInterval(async () => {
       try {
+        console.log('[TestPage] Polling submission', submission.submissionId);
         const latest = await testService.getSubmission(submission.submissionId);
-        if (latest.status !== 'pending') {
+        console.log('[TestPage] Polled submission result:', latest);
+        const latestStatus = normalizeStatus(latest.status);
+        if (latestStatus !== 'pending') {
           setSubmission({
-            submissionId: latest.id ?? '',
-            status: latest.status as any,
+            submissionId: latest.id ?? submission.submissionId,
+            status: latestStatus,
             ciCdScore: latest.ciCdScore,
             llmScore: latest.llmScore,
             results: latest.results,
@@ -66,13 +90,12 @@ export function TestPage() {
           clearInterval(id);
         }
       } catch (e) {
-        console.error('Polling submission failed', e);
+        console.error('[TestPage] Polling submission failed', e);
       }
     }, 15000);
 
     return () => clearInterval(id);
   }, [submission]);
-
 
   // Function to handle running tests
   const handleRunTests = async () => {
@@ -84,16 +107,18 @@ export function TestPage() {
     try {
       setTestRunning(true);
       setError(null);
+      console.log('[TestPage] Running tests for', testId);
 
       // Run the tests using the GitHub repository
       const results = await testService.runTests(testId);
+      console.log('[TestPage] runTests result:', results);
       setSubmission({
         submissionId: 'local',
-        status: results.status as any,
+        status: normalizeStatus(results.status),
         results: results.results,
       });
     } catch (err: unknown) {
-      console.error('Error running tests:', err);
+      console.error('[TestPage] Error running tests:', err);
       const message = err instanceof Error ? err.message : 'Unknown error';
       setError(`Failed to run tests: ${message}`);
     } finally {
@@ -111,13 +136,15 @@ export function TestPage() {
     try {
       setSubmitting(true);
       setError(null);
+      console.log('[TestPage] Submitting solution for', testId);
       const res = await testService.submitSolution(testId, {});
+      console.log('[TestPage] submitSolution response:', res);
       setSubmission({
-        submissionId: res.submissionId ?? '',
-        status: res.status,
+        submissionId: (res.submissionId || res.id || ''),
+        status: normalizeStatus(res.status),
       });
     } catch (err: unknown) {
-      console.error('Error submitting solution:', err);
+      console.error('[TestPage] Error submitting solution:', err);
       const message = err instanceof Error ? err.message : 'Unknown error';
       setError(`Failed to submit solution: ${message}`);
     } finally {
@@ -132,22 +159,20 @@ export function TestPage() {
   return (
     <Container size="xl" py="xl" pos="relative">
       <LoadingOverlay visible={loading} zIndex={1000} overlayProps={{ blur: 2 }} />
-      
       {error && (
         <Alert icon={<IconAlertCircle size={16} />} color="red" mb="lg">
           {error}
         </Alert>
       )}
-
       {submission && (
         <Alert 
-          color={submission.status === 'success' ? 'green' : submission.status === 'pending' ? 'blue' : 'yellow'}
+          color={submission.status === 'success' || submission.status === 'completed' ? 'green' : submission.status === 'pending' ? 'blue' : 'yellow'}
           mb="lg"
         >
           <Title order={4} mb="xs">
             {submission.status === 'pending' && 'Tests are running…'}
-            {submission.status === 'success' && 'All Tests Passed!'}
-            {submission.status === 'failure' && 'Some Tests Failed'}
+            {(submission.status === 'success' || submission.status === 'completed') && 'All Tests Passed!'}
+            {(submission.status === 'failure' || submission.status === 'failed') && 'Some Tests Failed'}
           </Title>
           {submission.status === 'pending' && (
             <Text size="sm">Please wait while CI/CD completes. Refresh this page in a minute.</Text>
@@ -238,8 +263,6 @@ export function TestPage() {
           </Paper>
         ))}
       </Paper>
-
-
     </Container>
   );
 }

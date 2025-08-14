@@ -9,7 +9,18 @@ export const submissionController = {
       if (!submission) {
         return res.status(404).json({ error: 'Submission not found' });
       }
-      return res.json(submission);
+
+			// Normalize fields for frontend consumption
+			const result: any = submission.result || {};
+			const normalized = {
+				id: submission.id,
+				status: submission.status as any,
+				results: Array.isArray(result?.results) ? result.results : [],
+				ciCdScore: result?.ciCdScore ?? result?.cicdScore ?? null,
+				llmScore: result?.llmScore ?? null,
+			};
+
+			return res.json(normalized);
     } catch (error) {
       console.error('Error fetching submission:', error);
       return res.status(500).json({ error: 'Failed to fetch submission' });

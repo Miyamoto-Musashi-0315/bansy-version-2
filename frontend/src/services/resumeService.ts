@@ -25,6 +25,7 @@ export const uploadResumeForJd = async (jdId: string, formData: FormData): Promi
       headers: {
         'Content-Type': 'multipart/form-data',
       },
+      timeout: 60000, // Allow up to 60s for upload and server-side AI analysis
     });
     
     // Restore default Content-Type header
