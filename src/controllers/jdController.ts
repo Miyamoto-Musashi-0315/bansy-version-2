@@ -7,6 +7,7 @@ import fs from 'fs';
 import GithubService from '../services/githubService';
 import { config } from '../config';
 import { emailService, CandidateEmailData } from '../services/emailService';
+import { triggerLLMEvaluation } from '../services/ai/evaluationService';
 
 // Initialize AI service
 const geminiService = new GeminiService();
@@ -1195,6 +1196,67 @@ export const jdController = {
     } catch (error) {
       console.error('jdController.getCandidateRepositoryStatus: ERROR:', error);
       res.status(500).json({ error: 'Failed to fetch repository status' });
+    }
+  },
+
+  /**
+   * Manually trigger LLM evaluation for a candidate
+   */
+  async triggerCandidateEvaluation(req: UserRequest, res: Response) {
+    const { candidateId } = req.params;
+    const { repoUrl } = req.body;
+    const user = req.user;
+
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    if (!repoUrl) {
+      return res.status(400).json({ error: 'Repository URL is required' });
+    }
+
+    try {
+      console.log(`[Manual Evaluation] Triggering LLM evaluation for candidate: ${candidateId}`);
+      
+      // Get candidate data
+      const candidate = await prisma.candidate.findUnique({
+        where: { id: candidateId },
+        include: {
+          jobDescription: {
+            include: {
+              test: true
+            }
+          }
+        }
+      });
+
+      if (!candidate) {
+        return res.status(404).json({ error: 'Candidate not found' });
+      }
+
+      if (!candidate.jobDescription.test) {
+        return res.status(400).json({ error: 'No test found for this candidate' });
+      }
+
+      // Extract repo name from URL
+      const repoUrlParts = repoUrl.split('/');
+      const repoName = repoUrlParts[repoUrlParts.length - 1];
+      
+      if (!repoName) {
+        return res.status(400).json({ error: 'Invalid repository URL' });
+      }
+
+      // Trigger LLM evaluation
+      await triggerLLMEvaluation(candidateId, candidate.jobDescription.test.id, repoName);
+      
+      res.json({
+        message: 'LLM evaluation triggered successfully',
+        candidateId,
+        repoName
+      });
+    } catch (error: any) {
+      console.error('[Manual Evaluation] Error:', error);
+      res.status(500).json({ error: 'Failed to trigger LLM evaluation' });
     }
   }
 };

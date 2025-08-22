@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Container, Title, Text, Paper, Group, Button, Card, Badge, Alert, Modal, Stack, Checkbox } from '@mantine/core';
-import { IconCode, IconCheck, IconSend, IconEye } from '@tabler/icons-react';
+import { Container, Title, Text, Paper, Group, Button, Card, Badge, Alert, Modal, Stack, Checkbox, Tooltip } from '@mantine/core';
+import { IconCode, IconCheck, IconSend, IconEye, IconChartBar, IconBrain } from '@tabler/icons-react';
 import { getJdById, generateProjectForJd, sendTestsToCandiidates } from '../services/jdService';
 import { JobDescription, Test } from '../types';
 import { logger } from '../utils/logger';
+import assessmentService from '../services/assessmentService';
 
 const JdDetailsPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -20,6 +21,7 @@ const JdDetailsPage = () => {
     githubRepository: string;
     test: Test;
   } | null>(null);
+  const [evaluatingCandidate, setEvaluatingCandidate] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -45,6 +47,8 @@ const JdDetailsPage = () => {
     if (!id) return;
 
     setGeneratingProject(true);
+    setError(null); // Clear any previous errors
+    
     try {
       const result = await generateProjectForJd(id);
       setGeneratedProjectData(result);
@@ -57,10 +61,36 @@ const JdDetailsPage = () => {
         setJd(updatedJd);
       } catch (refreshErr) {
         logger.error('Failed to refresh JD after project generation', refreshErr);
+        // Don't show this error to the user since the project generation succeeded
       }
-    } catch (err) {
+    } catch (err: unknown) {
       logger.error('Failed to generate project', err);
-      setError('Failed to generate project. Please try again.');
+      
+      // Check if it's a timeout error
+      const error = err as { code?: string; message?: string };
+      if (error.code === 'ECONNABORTED' || (error.message && error.message.includes('timeout'))) {
+        setError('Request timed out. The project may still be generating. Please refresh the page in a moment.');
+        
+        // Try to fetch the JD to see if the project was actually created
+        try {
+          const updatedJd = await getJdById(id);
+          if (updatedJd.test) {
+            // Project was actually created despite the timeout
+            setJd(updatedJd);
+            setGeneratedProjectData({
+              message: 'Project created successfully!',
+              test: updatedJd.test,
+              githubRepository: updatedJd.test.gitRepoUrl || ''
+            });
+            setProjectGenerated(true);
+            setError(null); // Clear the error since we recovered
+          }
+        } catch (fetchErr) {
+          logger.error('Failed to check JD status after timeout', fetchErr);
+        }
+      } else {
+        setError('Failed to generate project. Please try again.');
+      }
     } finally {
       setGeneratingProject(false);
     }
@@ -119,6 +149,24 @@ const JdDetailsPage = () => {
     }
   };
 
+  const handleTriggerEvaluation = async (candidateId: string, repoUrl: string) => {
+    if (!repoUrl) {
+      alert('No repository URL found for this candidate');
+      return;
+    }
+
+    setEvaluatingCandidate(candidateId);
+    try {
+      await assessmentService.triggerLlmEvaluation(candidateId, repoUrl);
+      alert('LLM evaluation triggered successfully. Check the assessment results page in a few minutes.');
+    } catch (err) {
+      logger.error('Failed to trigger LLM evaluation', err);
+      alert('Failed to trigger LLM evaluation. Please try again later.');
+    } finally {
+      setEvaluatingCandidate(null);
+    }
+  };
+
   const getScoreColor = (score?: number) => {
     if (!score) return 'gray';
     if (score >= 8) return 'teal';
@@ -142,10 +190,18 @@ const JdDetailsPage = () => {
               leftSection={<IconCode size={16} />}
               onClick={handleGenerateProject}
               loading={generatingProject}
+              disabled={generatingProject}
               color="blue"
             >
-              {jd.test ? (generatingProject ? 'Regenerating...' : 'Regenerate Project') : 'Generate Project'}
+              {generatingProject ? 'Generating Project...' : jd.test ? 'Regenerate Project' : 'Generate Project'}
             </Button>
+            
+            {/* Show a note about long generation time */}
+            {generatingProject && (
+              <Text size="xs" c="dimmed" style={{ maxWidth: '300px' }}>
+                Project generation may take up to 2 minutes. Please wait...
+              </Text>
+            )}
             <Button component={Link} to={`edit`}>
               Edit JD
             </Button>
@@ -179,35 +235,49 @@ const JdDetailsPage = () => {
           )}
         </Card>
 
-        {jd.test && (
-          <Card withBorder radius="md" mt="md">
+        {jd?.test && (
+          <Paper withBorder p="md" radius="md" mb="lg">
             <Group justify="space-between">
-              <Title order={4}>Generated Project</Title>
+              <div>
+                <Title order={3}>Test Project</Title>
+                <Text c="dimmed">Generated coding assessment for this job description</Text>
+              </div>
               <Group>
-                <Badge color="green">Ready</Badge>
-                <Button 
-                  size="xs" 
-                  leftSection={<IconEye size={14} />}
+                <Button
+                  component={Link}
+                  to={`/dashboard/jds/${id}/results`}
+                  variant="outline"
+                  leftSection={<IconChartBar size={16} />}
+                >
+                  View Assessment Results
+                </Button>
+                <Button
                   component={Link}
                   to={`/test/${jd.test.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   variant="outline"
-                  color="blue"
+                  leftSection={<IconEye size={16} />}
                 >
-                  View Test Page
+                  Test Page
                 </Button>
               </Group>
             </Group>
-            <Text mt="sm" fw={500}>{jd.test.title}</Text>
-            <Text mt="xs" size="sm" c="dimmed">{jd.test.description}</Text>
-            {jd.test.gitRepoUrl && (
-              <Group mt="sm">
-                <Text size="sm" fw={500}>Repository:</Text>
-                <Text size="sm" component="a" href={jd.test.gitRepoUrl} target="_blank" style={{ color: 'blue' }}>
-                  {jd.test.gitRepoUrl}
-                </Text>
-              </Group>
+            <Text mt="md">
+              <strong>Title:</strong> {jd.test.title}
+            </Text>
+            {jd.test.description && (
+              <Text mt="xs">
+                <strong>Description:</strong> {jd.test.description}
+              </Text>
             )}
-          </Card>
+            <Text mt="xs">
+              <strong>Language:</strong> {jd.test.language}
+            </Text>
+            <Text mt="xs">
+              <strong>Difficulty:</strong> {jd.test.difficulty}
+            </Text>
+          </Paper>
         )}
 
         <Card withBorder radius="md" mt="md">
@@ -283,6 +353,18 @@ const JdDetailsPage = () => {
                                   Created: {new Date(candidate.repoCreatedAt).toLocaleDateString()}
                                 </Text>
                               )}
+                              <Tooltip label="Manually trigger LLM evaluation for this candidate">
+                                <Button
+                                  size="xs"
+                                  variant="subtle"
+                                  color="violet"
+                                  leftSection={<IconBrain size={14} />}
+                                  onClick={() => handleTriggerEvaluation(candidate.id, candidate.individualRepoUrl || '')}
+                                  loading={evaluatingCandidate === candidate.id}
+                                >
+                                  Evaluate Code
+                                </Button>
+                              </Tooltip>
                             </Group>
                           )}
                         </div>
@@ -294,6 +376,11 @@ const JdDetailsPage = () => {
                         {hasBeenSentTest && (
                           <Badge color="blue" variant="light">
                             Test Sent
+                          </Badge>
+                        )}
+                        {candidate.status === 'Completed' && (
+                          <Badge color="green" variant="light">
+                            Completed
                           </Badge>
                         )}
                         {candidate.suitabilityScore && candidate.suitabilityScore < 5 && (

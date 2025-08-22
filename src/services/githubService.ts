@@ -769,7 +769,127 @@ This issue is validated by test case(s): ${issue.testCaseIds.map(id => `#${id + 
       const effectiveWorkflowFiles = [...(workflowFiles || [])];
       if (!hasWorkflow) {
         console.log('[GitHub] No workflow files provided – injecting default CI workflow with artifact upload');
-        const defaultCi = `name: CI/CD\n\non:\n  push:\n    branches: [\"main\"]\n  workflow_dispatch:\n\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with:\n          node-version: '20'\n          cache: 'npm'\n      - name: Install dependencies\n        run: npm ci || npm install\n      - name: Run tests (Jest JSON)\n        run: npm test -- --json --outputFile=jest-results.json --runInBand || true\n      - name: Upload test results\n        uses: actions/upload-artifact@v4\n        with:\n          name: test-results\n          path: jest-results.json\n`;
+        const defaultCi = `name: CI/CD
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      # Detect and setup appropriate runtime based on files present
+      - name: Detect project type
+        id: detect
+        run: |
+          if [ -f "pom.xml" ]; then
+            echo "type=maven" >> $GITHUB_OUTPUT
+          elif [ -f "build.gradle" ] || [ -f "build.gradle.kts" ]; then
+            echo "type=gradle" >> $GITHUB_OUTPUT
+          elif [ -f "package.json" ]; then
+            echo "type=node" >> $GITHUB_OUTPUT
+          elif [ -f "requirements.txt" ] || [ -f "setup.py" ]; then
+            echo "type=python" >> $GITHUB_OUTPUT
+          elif [ -f "go.mod" ]; then
+            echo "type=go" >> $GITHUB_OUTPUT
+          else
+            echo "type=unknown" >> $GITHUB_OUTPUT
+          fi
+      
+      # Java/Maven setup
+      - name: Set up JDK
+        if: steps.detect.outputs.type == 'maven' || steps.detect.outputs.type == 'gradle'
+        uses: actions/setup-java@v4
+        with:
+          java-version: '11'
+          distribution: 'temurin'
+      
+      # Node.js setup
+      - name: Set up Node.js
+        if: steps.detect.outputs.type == 'node' || steps.detect.outputs.type == 'unknown'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      # Python setup
+      - name: Set up Python
+        if: steps.detect.outputs.type == 'python'
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+      
+      # Go setup
+      - name: Set up Go
+        if: steps.detect.outputs.type == 'go'
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+      
+      # Install dependencies and run tests based on project type
+      - name: Run Maven tests
+        if: steps.detect.outputs.type == 'maven'
+        run: |
+          mvn clean test -B || true
+          mvn surefire-report:report-only || true
+          if [ -f target/surefire-reports/TEST-*.xml ]; then
+            cp target/surefire-reports/TEST-*.xml test-results.xml
+          else
+            echo '{"status":"error","message":"No test results found"}' > test-results.json
+          fi
+      
+      - name: Run Gradle tests
+        if: steps.detect.outputs.type == 'gradle'
+        run: |
+          ./gradlew test || chmod +x gradlew && ./gradlew test || true
+          if [ -d build/test-results/test ]; then
+            cp build/test-results/test/*.xml test-results.xml 2>/dev/null || echo '{"status":"error","message":"No test results found"}' > test-results.json
+          else
+            echo '{"status":"error","message":"No test results found"}' > test-results.json
+          fi
+      
+      - name: Run Node.js tests
+        if: steps.detect.outputs.type == 'node'
+        run: |
+          npm ci || npm install || true
+          npm test -- --json --outputFile=test-results.json || echo '{"status":"error","message":"Test execution failed"}' > test-results.json
+      
+      - name: Run Python tests
+        if: steps.detect.outputs.type == 'python'
+        run: |
+          pip install -r requirements.txt || pip install . || true
+          python -m pytest --json-report --json-report-file=test-results.json || python -m unittest discover || echo '{"status":"error","message":"No tests found"}' > test-results.json
+      
+      - name: Run Go tests
+        if: steps.detect.outputs.type == 'go'
+        run: |
+          go test -v -json ./... > test-results.json || echo '{"status":"error","message":"Test execution failed"}' > test-results.json
+      
+      - name: Create fallback test results
+        if: steps.detect.outputs.type == 'unknown'
+        run: |
+          echo '{"status":"success","message":"No recognized test framework found","tests":[]}' > test-results.json
+      
+      # Upload test results as artifact
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            test-results.json
+            test-results.xml
+            target/surefire-reports/
+            build/test-results/
+          if-no-files-found: warn
+`;
         effectiveWorkflowFiles.push({ path: '.github/workflows/ci.yml', content: defaultCi });
       }
       
@@ -1116,10 +1236,11 @@ This issue is validated by test case(s): ${issue.testCaseIds.map(id => `#${id + 
   }
 
   // Download and parse test result artifacts from the latest completed workflow run
-  async getLatestWorkflowTestResults(repoName: string): Promise<Array<{ testCase: number; passed: boolean; title?: string; error?: string }>> {
+  async getLatestWorkflowTestResults(repoName: string): Promise<Array<{ testCase: number; passed: boolean; title?: string; error?: string; expected?: string; actual?: string }>> {
     await this.ensureInitialized();
     if (this.isGitHubDisabled) return [];
     try {
+      console.log(`[GitHub] Fetching workflow runs for repo: ${repoName}`);
       const runs = await this.octokit!.actions.listWorkflowRunsForRepo({
         owner: this.config.organizationName,
         repo: repoName,
@@ -1127,16 +1248,30 @@ This issue is validated by test case(s): ${issue.testCaseIds.map(id => `#${id + 
         status: 'completed'
       });
       const runList = runs.data.workflow_runs || [];
-      if (runList.length === 0) return [];
+      console.log(`[GitHub] Found ${runList.length} workflow runs`);
+      
+      if (runList.length === 0) {
+        console.warn(`[GitHub] No completed workflow runs found for ${repoName}`);
+        return this.generateFallbackResults(repoName);
+      }
 
       for (const run of runList) {
         try {
+          console.log(`[GitHub] Examining workflow run #${run.id} (${run.name}) with conclusion: ${run.conclusion}`);
+          
           const { data: artifactsResp } = await this.octokit!.actions.listWorkflowRunArtifacts({
             owner: this.config.organizationName,
             repo: repoName,
             run_id: run.id,
             per_page: 100
           });
+          
+          console.log(`[GitHub] Found ${artifactsResp.artifacts.length} artifacts for run #${run.id}`);
+          
+          if (artifactsResp.artifacts.length === 0) {
+            console.warn(`[GitHub] No artifacts found for run #${run.id} - this may indicate the workflow didn't produce test results`);
+            continue;
+          }
 
           const preferredArtifacts = ['test-results', 'jest-results', 'junit', 'results'];
           const ordered = artifactsResp.artifacts.sort((a: any, b: any) => {
@@ -1145,8 +1280,12 @@ This issue is validated by test case(s): ${issue.testCaseIds.map(id => `#${id + 
             return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
           });
 
+          console.log(`[GitHub] Ordered artifacts: ${ordered.map(a => a.name).join(', ')}`);
+
           for (const artifact of ordered) {
             try {
+              console.log(`[GitHub] Downloading artifact: ${artifact.name} (ID: ${artifact.id})`);
+              
               const resp = await this.octokit!.actions.downloadArtifact({
                 owner: this.config.organizationName,
                 repo: repoName,
@@ -1160,32 +1299,80 @@ This issue is validated by test case(s): ${issue.testCaseIds.map(id => `#${id + 
               const buffer = Buffer.isBuffer(resp.data) ? resp.data : Buffer.from(resp.data as any);
               const zip = new AdmZip(buffer);
               const entries = zip.getEntries();
+              
+              console.log(`[GitHub] Artifact contains ${entries.length} files: ${entries.map((e: any) => e.entryName).join(', ')}`);
 
               const jestEntry = entries.find((e: any) => /jest.*\.json$/i.test(e.entryName) || /test-results.*\.json$/i.test(e.entryName));
               const junitEntry = entries.find((e: any) => /junit.*\.xml$/i.test(e.entryName) || /test-results.*\.xml$/i.test(e.entryName) || /reports?\/.*\.xml$/i.test(e.entryName));
 
               if (jestEntry) {
+                console.log(`[GitHub] Found Jest results file: ${jestEntry.entryName}`);
                 const raw = jestEntry.getData().toString('utf8');
-                const json = JSON.parse(raw);
-                const flattened: Array<{ title: string; status: string; failureMessages?: string[] }> = [];
-                for (const suite of Array.isArray(json?.testResults) ? json.testResults : []) {
-                  for (const ar of Array.isArray(suite?.assertionResults) ? suite.assertionResults : []) {
-                    flattened.push({ title: ar?.fullName || ar?.title || 'Test', status: ar?.status || 'unknown', failureMessages: ar?.failureMessages || [] });
+                console.log(`[GitHub] Jest results file size: ${raw.length} bytes`);
+                
+                try {
+                  const json = JSON.parse(raw);
+                  console.log(`[GitHub] Jest results parsed successfully, found ${json?.testResults?.length || 0} test suites`);
+                  
+                  const flattened: Array<{ title: string; status: string; failureMessages?: string[] }> = [];
+                  for (const suite of Array.isArray(json?.testResults) ? json.testResults : []) {
+                    for (const ar of Array.isArray(suite?.assertionResults) ? suite.assertionResults : []) {
+                      flattened.push({ title: ar?.fullName || ar?.title || 'Test', status: ar?.status || 'unknown', failureMessages: ar?.failureMessages || [] });
+                    }
                   }
+                  
+                  console.log(`[GitHub] Flattened ${flattened.length} test results`);
+                  
+                  if (flattened.length === 0) {
+                    console.warn('[GitHub] No test results found in Jest results file');
+                    continue;
+                  }
+                  
+                  return flattened.map((item, index) => {
+                    // Parse expected vs actual values from failure messages
+                    let expected: string | undefined;
+                    let actual: string | undefined;
+                    
+                    if (item.status !== 'passed' && Array.isArray(item.failureMessages) && item.failureMessages.length > 0) {
+                      // Try to extract expected and actual values from common test frameworks
+                      for (const msg of item.failureMessages) {
+                        // Jest pattern: Expected: "expectedValue" Received: "actualValue"
+                        const jestMatch = msg.match(/Expected:?\s+["']?(.*?)["']?\s+Received:?\s+["']?(.*?)["']?$/m);
+                        if (jestMatch) {
+                          expected = jestMatch[1]?.trim();
+                          actual = jestMatch[2]?.trim();
+                          break;
+                        }
+                        
+                        // Alternative pattern: expected <expectedValue> but got <actualValue>
+                        const altMatch = msg.match(/expected\s+(?:<|["'])(.*?)(?:>|["'])\s+but\s+got\s+(?:<|["'])(.*?)(?:>|["'])/i);
+                        if (altMatch) {
+                          expected = altMatch[1]?.trim();
+                          actual = altMatch[2]?.trim();
+                          break;
+                        }
+                      }
+                    }
+                    
+                    return {
+                      testCase: index,
+                      passed: item.status === 'passed',
+                      title: item.title,
+                      error: item.status === 'passed' ? undefined : (Array.isArray(item.failureMessages) ? item.failureMessages.join('\n\n') : 'Test failed'),
+                      expected,
+                      actual
+                    };
+                  });
+                } catch (parseErr) {
+                  console.error(`[GitHub] Error parsing Jest results: ${parseErr}`);
+                  continue;
                 }
-                return flattened.map((item, index) => ({
-                  testCase: index,
-                  passed: item.status === 'passed',
-                  title: item.title,
-                  error: item.status === 'passed' ? undefined : (Array.isArray(item.failureMessages) ? item.failureMessages.join('\n\n') : 'Test failed')
-                }));
-              }
-
-              if (junitEntry) {
+              } else if (junitEntry) {
+                // JUnit parsing logic (unchanged)
                 const raw = junitEntry.getData().toString('utf8');
                 const xml: any = await parseStringPromise(raw, { explicitArray: false, mergeAttrs: true });
                 type Case = { name?: string; failure?: any };
-                const tests: Array<{ name: string; errorMsg?: string }> = [];
+                const tests: Array<{ name: string; errorMsg?: string; expected?: string; actual?: string }> = [];
                 const suitesAny = (xml?.testsuites?.testsuite || xml?.testsuite || []) as any;
                 const suiteArr = Array.isArray(suitesAny) ? suitesAny : [suitesAny];
                 for (const suite of suiteArr) {
@@ -1193,6 +1380,9 @@ This issue is validated by test case(s): ${issue.testCaseIds.map(id => `#${id + 
                   const caseArr = Array.isArray(casesAny) ? casesAny : [casesAny];
                   for (const c of caseArr as Case[]) {
                     let errorMsg: string | undefined;
+                    let expected: string | undefined;
+                    let actual: string | undefined;
+                    
                     const failure = (c as any)?.failure;
                     if (failure) {
                       if (Array.isArray(failure)) {
@@ -1203,8 +1393,30 @@ This issue is validated by test case(s): ${issue.testCaseIds.map(id => `#${id + 
                         const underscore = (failure as any)?._;
                         errorMsg = typeof underscore === 'string' ? underscore : JSON.stringify(failure);
                       }
+                      
+                      // Try to extract expected and actual values
+                      if (errorMsg) {
+                        // JUnit pattern: expected:<expectedValue> but was:<actualValue>
+                        const junitMatch = errorMsg.match(/expected:<(.*?)>\s+but\s+was:<(.*?)>/i);
+                        if (junitMatch) {
+                          expected = junitMatch[1]?.trim();
+                          actual = junitMatch[2]?.trim();
+                        }
+                        
+                        // Alternative pattern: expected <expectedValue> but got <actualValue>
+                        const altMatch = errorMsg.match(/expected\s+(?:<|["'])(.*?)(?:>|["'])\s+but\s+got\s+(?:<|["'])(.*?)(?:>|["'])/i);
+                        if (altMatch) {
+                          expected = altMatch[1]?.trim();
+                          actual = altMatch[2]?.trim();
+                        }
+                      }
                     }
-                    tests.push({ name: (c as any)?.name || 'Test', errorMsg });
+                    tests.push({ 
+                      name: (c as any)?.name || 'Test', 
+                      errorMsg,
+                      expected,
+                      actual
+                    });
                   }
                 }
                 return tests.map((t, index) => ({
@@ -1212,7 +1424,11 @@ This issue is validated by test case(s): ${issue.testCaseIds.map(id => `#${id + 
                   passed: !t.errorMsg,
                   title: t.name,
                   error: t.errorMsg,
+                  expected: t.expected,
+                  actual: t.actual
                 }));
+              } else {
+                console.warn('[GitHub] No recognizable test result files found in artifact');
               }
             } catch (artifactErr: any) {
               const msg = artifactErr?.message || artifactErr;
@@ -1225,10 +1441,38 @@ This issue is validated by test case(s): ${issue.testCaseIds.map(id => `#${id + 
           continue;
         }
       }
+      
+      // If we get here, we couldn't find any test results in any artifacts
+      console.warn(`[GitHub] No test results found in any workflow artifacts for ${repoName}`);
+      return this.generateFallbackResults(repoName);
     } catch (err: any) {
       console.error('[GitHub] Error fetching workflow artifacts:', err?.message || err);
+      return this.generateFallbackResults(repoName);
     }
-    return [];
+  }
+  
+  /**
+   * Generate fallback test results when no real results can be found
+   * This ensures the UI always shows something meaningful
+   */
+  private generateFallbackResults(repoName: string): Array<{ testCase: number; passed: boolean; title?: string; error?: string; expected?: string; actual?: string }> {
+    console.log(`[GitHub] Generating fallback test results for ${repoName}`);
+    
+    // Create a generic test result
+    return [
+      {
+        testCase: 0,
+        passed: false,
+        title: 'CI/CD Pipeline Test',
+        error: 'No detailed test results were found. This could be because:\n' +
+               '1. The workflow did not produce test results in the expected format\n' +
+               '2. Tests failed to run or crashed\n' +
+               '3. The repository structure may need adjustments\n\n' +
+               'Check your code for syntax errors or missing dependencies.',
+        expected: 'All tests to pass',
+        actual: 'Pipeline failed or results unavailable'
+      }
+    ];
   }
 
   /**

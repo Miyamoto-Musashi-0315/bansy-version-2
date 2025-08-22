@@ -15,7 +15,15 @@ export const submissionController = {
 			const normalized = {
 				id: submission.id,
 				status: submission.status as any,
-				results: Array.isArray(result?.results) ? result.results : [],
+				results: Array.isArray(result?.results) ? result.results.map((item: any) => ({
+          testCase: item.testCase,
+          passed: item.passed,
+          output: item.output,
+          error: item.error,
+          title: item.title,
+          expected: item.expected,
+          actual: item.actual
+        })) : [],
 				ciCdScore: result?.ciCdScore ?? result?.cicdScore ?? null,
 				llmScore: result?.llmScore ?? null,
 			};

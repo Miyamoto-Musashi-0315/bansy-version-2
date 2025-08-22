@@ -9,6 +9,7 @@ import githubRoutes from './routes/github.routes';
 import jdRoutes from './routes/jdRoutes';
 import submissionRoutes from './routes/submission.routes';
 import imageRoutes from './routes/image';
+import webhookRoutes from './routes/webhook.routes';
 
 const app = express();
 
@@ -40,6 +41,7 @@ app.use('/api/ai', aiRoutes);
 app.use('/api/github', githubRoutes);
 app.use('/api/jds', jdRoutes);
 app.use('/api/submissions', submissionRoutes);
+app.use('/api/webhooks', webhookRoutes);
 app.use('/api', imageRoutes);
 
 // Health check endpoint

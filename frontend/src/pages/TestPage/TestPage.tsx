@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Container, Title, Paper, Alert, LoadingOverlay, Text, Badge, Group, Button } from '@mantine/core';
-import { IconAlertCircle, IconPlayerPlay, IconUpload } from '@tabler/icons-react';
+import { IconAlertCircle, IconPlayerPlay, IconUpload, IconRefresh } from '@tabler/icons-react';
 import { testService, Test } from '../../services/testService';
 
 interface SubmissionState {
@@ -14,6 +14,9 @@ interface SubmissionState {
     passed: boolean;
     output?: string;
     error?: string;
+    title?: string;
+    expected?: string;
+    actual?: string;
   }>;
 }
 
@@ -33,6 +36,8 @@ export function TestPage() {
   const [testRunning, setTestRunning] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submission, setSubmission] = useState<SubmissionState | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   useEffect(() => {
     const fetchTest = async () => {
@@ -56,6 +61,7 @@ export function TestPage() {
             llmScore: latest.llmScore,
             results: latest.results,
           });
+          setLastUpdated(new Date());
         }
       } catch (err) {
         setError('Failed to load test data. Please try again.');
@@ -87,12 +93,13 @@ export function TestPage() {
             llmScore: latest.llmScore,
             results: latest.results,
           });
+          setLastUpdated(new Date());
           clearInterval(id);
         }
       } catch (e) {
         console.error('[TestPage] Polling submission failed', e);
       }
-    }, 15000);
+    }, 5000); // Reduced from 15000 to 5000 ms for more responsive updates
 
     return () => clearInterval(id);
   }, [submission]);
@@ -117,6 +124,7 @@ export function TestPage() {
         status: normalizeStatus(results.status),
         results: results.results,
       });
+      setLastUpdated(new Date());
     } catch (err: unknown) {
       console.error('[TestPage] Error running tests:', err);
       const message = err instanceof Error ? err.message : 'Unknown error';
@@ -152,13 +160,56 @@ export function TestPage() {
     }
   };
 
+  // Function to manually refresh the test and submission status
+  const handleRefresh = async () => {
+    if (!testId) return;
+    
+    setRefreshing(true);
+    try {
+      // Refresh test data
+      const data = await testService.getTest(testId);
+      setTest(data);
+      
+      // Refresh submission data if available
+      if (submission?.submissionId) {
+        const latest = await testService.getSubmission(submission.submissionId);
+        const latestStatus = normalizeStatus(latest.status);
+        setSubmission({
+          submissionId: latest.id ?? submission.submissionId,
+          status: latestStatus,
+          ciCdScore: latest.ciCdScore,
+          llmScore: latest.llmScore,
+          results: latest.results,
+        });
+      } else {
+        // Check if there's a latest submission
+        const latest = await testService.getLatestSubmissionForTest(testId);
+        if (latest) {
+          setSubmission({
+            submissionId: latest.id ?? '',
+            status: normalizeStatus(latest.status),
+            ciCdScore: latest.ciCdScore,
+            llmScore: latest.llmScore,
+            results: latest.results,
+          });
+        }
+      }
+      setError(null);
+      setLastUpdated(new Date());
+    } catch (err) {
+      console.error('[TestPage] Error refreshing data:', err);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   if (!test) {
     return null; // Or loading spinner
   }
 
   return (
     <Container size="xl" py="xl" pos="relative">
-      <LoadingOverlay visible={loading} zIndex={1000} overlayProps={{ blur: 2 }} />
+      <LoadingOverlay visible={loading || refreshing} zIndex={1000} overlayProps={{ blur: 2 }} />
       {error && (
         <Alert icon={<IconAlertCircle size={16} />} color="red" mb="lg">
           {error}
@@ -175,27 +226,88 @@ export function TestPage() {
             {(submission.status === 'failure' || submission.status === 'failed') && 'Some Tests Failed'}
           </Title>
           {submission.status === 'pending' && (
-            <Text size="sm">Please wait while CI/CD completes. Refresh this page in a minute.</Text>
+            <>
+              <Group mb="md">
+                <LoadingOverlay visible={true} zIndex={1} overlayProps={{ blur: 2 }} />
+                <Text size="sm">
+                  Please wait while CI/CD completes. This may take up to 2 minutes.
+                </Text>
+              </Group>
+              <Text size="sm" c="dimmed">
+                The system is running your tests in a GitHub workflow. Results will appear automatically when completed.
+                You can also refresh this page to check for updates.
+              </Text>
+            </>
           )}
           {Array.isArray(submission.results) && submission.results.length > 0 && (
-            submission.results.map((result, index) => (
-              <Paper key={index} withBorder p="xs" mb="xs">
-                <Group justify="space-between">
-                  <Text>Test Case {result.testCase + 1}</Text>
-                  <Badge color={result.passed ? 'green' : 'red'}>
-                    {result.passed ? 'PASSED' : 'FAILED'}
-                  </Badge>
-                </Group>
-                {!result.passed && result.error && (
-                  <Text c="red" size="sm" mt="xs">{result.error}</Text>
-                )}
-                {result.output && (
-                  <Text size="sm" mt="xs" style={{ fontFamily: 'monospace' }}>
-                    Output: {result.output}
-                  </Text>
-                )}
+            <>
+              <Group mb="md">
+                <Badge color="green" size="lg">
+                  {submission.results.filter(r => r.passed).length} Passed
+                </Badge>
+                <Badge color="red" size="lg">
+                  {submission.results.filter(r => !r.passed).length} Failed
+                </Badge>
+                <Badge color="blue" size="lg">
+                  {submission.results.length} Total
+                </Badge>
+              </Group>
+              
+              <Paper withBorder p="md" mb="md" bg="rgba(0,0,0,0.03)">
+                <Title order={5} mb="sm">Test Results Summary</Title>
+                <Text size="sm">
+                  {submission.results.filter(r => r.passed).length === submission.results.length ? 
+                    'All tests passed successfully! Your code meets all the requirements.' : 
+                    `${submission.results.filter(r => !r.passed).length} out of ${submission.results.length} tests failed. See details below.`
+                  }
+                </Text>
               </Paper>
-            ))
+              
+              <Title order={5} mb="sm">Test Details</Title>
+              {submission.results.map((result, index) => (
+                <Paper key={index} withBorder p="xs" mb="xs">
+                  <Group justify="space-between">
+                    <Text>Test Case {result.testCase + 1}</Text>
+                    <Badge color={result.passed ? 'green' : 'red'}>
+                      {result.passed ? 'PASSED' : 'FAILED'}
+                    </Badge>
+                  </Group>
+                  {result.title && (
+                    <Text size="sm" fw={500} mt="xs">{result.title}</Text>
+                  )}
+                  {!result.passed && (
+                    <>
+                      {result.expected && result.actual && (
+                        <Paper withBorder p="xs" mt="xs" style={{ backgroundColor: '#fff5f5' }}>
+                          <Group gap="xs">
+                            <Text size="sm" fw={500}>Expected:</Text>
+                            <Text size="sm" style={{ fontFamily: 'monospace', backgroundColor: '#f8f8f8', padding: '2px 4px' }}>
+                              {result.expected}
+                            </Text>
+                          </Group>
+                          <Group gap="xs" mt="xs">
+                            <Text size="sm" fw={500}>Actual:</Text>
+                            <Text size="sm" style={{ fontFamily: 'monospace', backgroundColor: '#f8f8f8', padding: '2px 4px' }}>
+                              {result.actual}
+                            </Text>
+                          </Group>
+                        </Paper>
+                      )}
+                      {result.error && (
+                        <Text c="red" size="sm" mt="xs" style={{ whiteSpace: 'pre-wrap' }}>
+                          {result.error.length > 300 ? `${result.error.substring(0, 300)}...` : result.error}
+                        </Text>
+                      )}
+                    </>
+                  )}
+                  {result.output && (
+                    <Text size="sm" mt="xs" style={{ fontFamily: 'monospace' }}>
+                      Output: {result.output}
+                    </Text>
+                  )}
+                </Paper>
+              ))}
+            </>
           )}
         </Alert>
       )}
@@ -213,17 +325,31 @@ export function TestPage() {
             >
               Submit Solution
             </Button>
-          <Button
-            leftSection={<IconPlayerPlay size={18} />}
-            color="green"
-            onClick={handleRunTests}
-            loading={testRunning}
-            disabled={!test.gitRepoUrl}
-          >
-            Run Tests
-          </Button>
+            <Button
+              leftSection={<IconPlayerPlay size={18} />}
+              color="green"
+              onClick={handleRunTests}
+              loading={testRunning}
+              disabled={!test.gitRepoUrl}
+            >
+              Run Tests
+            </Button>
+            <Button
+              leftSection={<IconRefresh size={18} />}
+              color="gray"
+              onClick={handleRefresh}
+              loading={refreshing}
+              disabled={!testId}
+            >
+              Refresh
+            </Button>
           </Group>
         </Group>
+        {lastUpdated && (
+          <Text size="xs" c="dimmed" mb="md" ta="right">
+            Last updated: {lastUpdated.toLocaleTimeString()}
+          </Text>
+        )}
         <Text mb="lg">{test.description}</Text>
 
         <Title order={4} mb="xs">Requirements</Title>

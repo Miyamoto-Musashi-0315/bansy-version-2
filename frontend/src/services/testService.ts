@@ -24,6 +24,9 @@ interface SubmissionResult {
     passed: boolean;
     output?: string;
     error?: string;
+    title?: string;
+    expected?: string;
+    actual?: string;
   }>;
   llmScore?: number;
   ciCdScore?: number;

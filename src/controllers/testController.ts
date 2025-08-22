@@ -232,8 +232,31 @@ export const testController = {
               const mapped = flattened.map((item, index) => ({
                 testCase: index,
                 passed: item.status === 'passed',
+                title: item.title || undefined,
                 error: item.status === 'passed' ? undefined : (Array.isArray(item.failureMessages) ? item.failureMessages.join('\n\n') : 'Test failed'),
                 output: item.status === 'passed' ? item.title : undefined,
+                // Extract expected and actual values from failure messages
+                ...(item.status !== 'passed' && Array.isArray(item.failureMessages) && item.failureMessages.length > 0 ? (() => {
+                  let expected, actual;
+                  for (const msg of item.failureMessages) {
+                    // Jest pattern: Expected: "expectedValue" Received: "actualValue"
+                    const jestMatch = msg.match(/Expected:?\s+["']?(.*?)["']?\s+Received:?\s+["']?(.*?)["']?$/m);
+                    if (jestMatch) {
+                      expected = jestMatch[1]?.trim();
+                      actual = jestMatch[2]?.trim();
+                      break;
+                    }
+                    
+                    // Alternative pattern: expected <expectedValue> but got <actualValue>
+                    const altMatch = msg.match(/expected\s+(?:<|["'])(.*?)(?:>|["'])\s+but\s+got\s+(?:<|["'])(.*?)(?:>|["'])/i);
+                    if (altMatch) {
+                      expected = altMatch[1]?.trim();
+                      actual = altMatch[2]?.trim();
+                      break;
+                    }
+                  }
+                  return { expected, actual };
+                })() : {})
               }));
 
               passedTests = mapped.filter(m => m.passed).length;
@@ -486,8 +509,15 @@ export const testController = {
 
         // Best effort: trigger workflow (will no-op if GitHub integration is disabled)
         try {
-          await githubService.triggerWorkflowDispatch(repoName, { workflowFileName: 'ci.yml', ref: 'main' });
-          console.log('[submitSolution] Workflow dispatch requested for repo:', repoName);
+          // Try to trigger build.yml first, then fall back to ci.yml
+          try {
+            await githubService.triggerWorkflowDispatch(repoName, { workflowFileName: 'build.yml', ref: 'main' });
+            console.log('[submitSolution] Workflow dispatch requested for repo:', repoName, 'workflow: build.yml');
+          } catch (buildErr) {
+            // If build.yml doesn't exist, try ci.yml as fallback
+            await githubService.triggerWorkflowDispatch(repoName, { workflowFileName: 'ci.yml', ref: 'main' });
+            console.log('[submitSolution] Workflow dispatch requested for repo:', repoName, 'workflow: ci.yml (fallback)');
+          }
         } catch (dispatchErr) {
           console.warn('[submitSolution] Workflow dispatch failed; CI may still run on push triggers:', dispatchErr);
         }
@@ -505,8 +535,8 @@ export const testController = {
         (async () => {
           try {
             console.log('[submitSolution] Starting background CI poller for repo:', repoName, 'submission:', submission.id);
-            const maxAttempts = 40; // ~10 minutes at 15s interval
-            const intervalMs = 15000;
+            const maxAttempts = 40; // ~10 minutes at 5s interval
+            const intervalMs = 5000; // Reduced from 15000 to 5000 ms for more responsive updates
             for (let attempt = 0; attempt < maxAttempts; attempt++) {
               const latest = await prisma.submission.findUnique({ where: { id: submission.id } });
               console.log('[submitSolution][poll] attempt', attempt, 'currentStatus=', latest?.status);
@@ -517,6 +547,77 @@ export const testController = {
               console.log('[submitSolution][poll] latest workflow run:', run);
               if (run && run.status === 'completed') {
                 const finalStatus = run.conclusion === 'success' ? 'success' : 'failure';
+                
+                // Fetch the detailed test results from GitHub workflow artifacts
+                console.log('[submitSolution][poll] Fetching detailed test results from workflow artifacts');
+                const testResults = await githubService.getLatestWorkflowTestResults(repoName);
+                console.log('[submitSolution][poll] Found', testResults.length, 'test results from artifacts');
+                
+                // Calculate pass/fail counts for logging
+                const passedCount = testResults.filter(t => t.passed).length;
+                const failedCount = testResults.length - passedCount;
+                console.log(`[submitSolution][poll] Tests summary: ${passedCount} passed, ${failedCount} failed`);
+                
+                // If no test results were found, create a default result
+                let resultsToUse = testResults;
+                // Detect generic pipeline fallback (no detailed per-test artifacts)
+                const isGenericPipelineFallback =
+                  testResults.length === 1 &&
+                  typeof (testResults[0] as any)?.title === 'string' &&
+                  (testResults[0] as any).title === 'CI/CD Pipeline Test';
+
+                if (testResults.length === 0 || isGenericPipelineFallback) {
+                  console.log('[submitSolution][poll] No test results found, creating default results for all test cases');
+                  
+                  // Create a result for each test case in the test definition
+                  resultsToUse = test.testCases.map((testCase, index) => ({
+                    testCase: index,
+                    passed: false,
+                    title: testCase.description || `Test Case ${index + 1}`,
+                    error: 'No detailed test results were found. This could be because:\n' +
+                          '1. The workflow did not produce test results in the expected format\n' +
+                          '2. Tests failed to run or crashed\n' +
+                          '3. The repository structure may need adjustments\n\n' +
+                          'Check your code for syntax errors or missing dependencies.',
+                    expected: testCase.expectedOutput || 'Test to pass',
+                    actual: 'Pipeline failed or results unavailable'
+                  }));
+                  
+                  // Add a general CI/CD pipeline test result if there are no test cases
+                  if (resultsToUse.length === 0) {
+                    resultsToUse = [
+                      {
+                        testCase: 0,
+                        passed: false,
+                        title: 'CI/CD Pipeline Test',
+                        error: 'No detailed test results were found. This could be because:\n' +
+                              '1. The workflow did not produce test results in the expected format\n' +
+                              '2. Tests failed to run or crashed\n' +
+                              '3. The repository structure may need adjustments\n\n' +
+                              'Check your code for syntax errors or missing dependencies.',
+                        expected: 'All tests to pass',
+                        actual: 'Pipeline failed or results unavailable'
+                      }
+                    ];
+                  }
+                }
+                
+                // Log details of failed tests for debugging
+                const failedTests = resultsToUse.filter(t => !t.passed);
+                if (failedTests.length > 0) {
+                  console.log('[submitSolution][poll] Failed tests:');
+                  failedTests.forEach((test, idx) => {
+                    console.log(`  Test #${test.testCase + 1}: ${test.title || 'Unnamed test'}`);
+                    if (test.expected && test.actual) {
+                      console.log(`    Expected: ${test.expected}`);
+                      console.log(`    Actual: ${test.actual}`);
+                    }
+                    if (test.error) {
+                      console.log(`    Error: ${test.error.substring(0, 100)}${test.error.length > 100 ? '...' : ''}`);
+                    }
+                  });
+                }
+                
                 await prisma.submission.update({
                   where: { id: submission.id },
                   data: {
@@ -524,11 +625,11 @@ export const testController = {
                     result: {
                       status: finalStatus,
                       ciCdScore: finalStatus === 'success' ? 40 : 0,
-          results: []
+                      results: resultsToUse.length > 0 ? resultsToUse : []
                     } as any,
                   },
                 });
-                console.log('[submitSolution][poll] submission updated to', finalStatus, 'stopping');
+                console.log('[submitSolution][poll] submission updated to', finalStatus, 'with', resultsToUse.length, 'test results');
                 break;
               }
 

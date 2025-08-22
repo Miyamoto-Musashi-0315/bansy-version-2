@@ -30,7 +30,7 @@ export const generateProjectForJd = async (jdId: string): Promise<{
   test: Test; 
   githubRepository: string 
 }> => {
-  const { data } = await api.post(`/ai/jds/${jdId}/generate-project`, undefined, { timeout: 60000 });
+  const { data } = await api.post(`/ai/jds/${jdId}/generate-project`, undefined, { timeout: 120000 });
   return data;
 };
 

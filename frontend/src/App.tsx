@@ -1,5 +1,5 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { MantineProvider, createTheme } from '@mantine/core';
+import { BrowserRouter, Routes, Route, Navigate, Link } from 'react-router-dom';
+import { MantineProvider, createTheme, Title, Button } from '@mantine/core';
 import '@mantine/core/styles.css';
 import { lazy, Suspense } from 'react';
 import { Container, Loader, Box, Text } from '@mantine/core';
@@ -15,6 +15,8 @@ const JdDetailsPage = lazy(() => import('./pages/JdDetailsPage'));
 const JdResumeUpload = lazy(() => import('./pages/JdResumeUpload'));
 const JdEdit = lazy(() => import('./pages/JdEdit'));
 const TestPage = lazy(() => import('./pages/TestPage').then(module => ({ default: module.TestPage })));
+const CandidateAssessmentPage = lazy(() => import('./pages/CandidateAssessmentPage').then(module => ({ default: module.CandidateAssessmentPage })));
+const JdAssessmentResultsPage = lazy(() => import('./pages/JdAssessmentResultsPage').then(module => ({ default: module.JdAssessmentResultsPage })));
 
 // Eagerly import critical layout and default dashboard to avoid Suspense hang on first render
 import JdDashboard from './pages/JdDashboard';
@@ -55,6 +57,17 @@ const LoadingFallback = () => {
   );
 };
 
+// Create a NotFound component
+const NotFound = () => (
+  <Container style={{ textAlign: 'center', marginTop: '50px' }}>
+    <Title order={2} mb="md">Page Not Found</Title>
+    <Text mb="xl">The page you're looking for doesn't exist or has been moved.</Text>
+    <Button component={Link} to="/dashboard">
+      Return to Dashboard
+    </Button>
+  </Container>
+);
+
 function App() {
   console.log('App: Component rendering');
   
@@ -94,6 +107,8 @@ function App() {
               <Route path="jds/:id" element={<JdDetailsPage />} />
               <Route path="jds/:id/upload-resume" element={<JdResumeUpload />} />
               <Route path="jds/:id/edit" element={<JdEdit />} />
+              <Route path="jds/:id/results" element={<JdAssessmentResultsPage />} />
+              <Route path="candidates/:candidateId/assessment" element={<CandidateAssessmentPage />} />
             </Route>
 
             {/* Candidate Test Page Route */}
@@ -104,6 +119,13 @@ function App() {
               path="/"
               element={<Navigate to="/dashboard" replace />}
             />
+            
+            {/* Redirect old /jds paths to /dashboard */}
+            <Route path="/jds" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/jds/:id" element={<Navigate to="/dashboard/jds/:id" replace />} />
+
+            {/* Catch-all route for 404 errors */}
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
       </BrowserRouter>
