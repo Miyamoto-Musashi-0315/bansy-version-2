@@ -37,6 +37,9 @@ model User {
   updatedAt       DateTime         @updatedAt
   jobDescriptions JobDescription[] // An HR user can create multiple JDs
   submissions     Submission[]
+
+  @@index([email])
+  @@index([role])
 }
 
 model Company {
@@ -60,6 +63,9 @@ model JobDescription {
   creatorId      String
   test           Test? // The single standardized test generated for this JD
   candidates     Candidate[] // Candidates who have applied for this job
+
+  @@index([creatorId])
+  @@index([createdAt])
 }
 
 // Represents a candidate's application for a specific job.
@@ -68,6 +74,7 @@ model Candidate {
   status              String // e.g., "PendingReview", "TestSent", "Completed"
   suitabilityScore    Float? // The AI's score for the resume against the JD
   suitabilityAnalysis Json? // The AI's rationale for the score
+  githubUsername      String? // Candidate's GitHub username for collaborator invites
   individualRepoUrl   String? // Individual GitHub repository URL for this candidate
   repoCreatedAt       DateTime? // When the individual repository was created
   createdAt           DateTime       @default(now())
@@ -81,6 +88,10 @@ model Candidate {
   submissionEvents SubmissionEvent[]
 
   @@unique([jobDescriptionId, resumeId]) // A person can only apply to a job once with the same resume
+  @@index([jobDescriptionId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([suitabilityScore])
 }
 
 // A candidate's resume, can be linked to multiple applications (Candidates).
@@ -94,6 +105,9 @@ model Resume {
   uploadedAt DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
   candidates Candidate[] // Applications this resume has been used for
+
+  @@index([email])
+  @@index([uploadedAt])
 }
 
 // A standardized test generated from a Job Description.
@@ -119,6 +133,9 @@ model Test {
   // Archival status for post-assessment cleanup
   repoArchived   Boolean   @default(false)
   repoArchivedAt DateTime?
+
+  @@index([jobDescriptionId])
+  @@index([createdAt])
 }
 
 model TestCase {
@@ -173,4 +190,10 @@ model SubmissionEvent {
   candidateId String?
   test        Test?      @relation(fields: [testId], references: [id])
   testId      String?
+
+  @@index([candidateId])
+  @@index([testId])
+  @@index([receivedAt])
+  @@index([eventType])
+  @@index([repoName])
 }

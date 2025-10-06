@@ -37,7 +37,7 @@ export function Login() {
   return (
     <Container size={420} my={40}>
       <Box ta="center">
-        <Title>Welcome back!</Title>
+        <Title>Welcome back to Bansy!</Title>
         <Text c="dimmed" size="sm" mt={5}>
           Don't have an account yet?{' '}
           <Link to="/register" style={{ color: 'var(--mantine-color-blue-6)' }}>

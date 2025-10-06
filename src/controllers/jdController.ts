@@ -8,6 +8,8 @@ import GithubService from '../services/githubService';
 import { config } from '../config';
 import { emailService, CandidateEmailData } from '../services/emailService';
 import { triggerLLMEvaluation } from '../services/ai/evaluationService';
+// @ts-ignore: legacy pdfjs import without types
+import { getDocument } from 'pdfjs-dist/legacy/build/pdf';
 
 // Initialize AI service
 const geminiService = new GeminiService();
@@ -21,10 +23,64 @@ const githubService = new GithubService(githubConfig);
 
 export const jdController = {
   /**
+   * Set or update a candidate's GitHub username, and optionally invite as collaborator
+   */
+  async setCandidateGithubUsername(req: UserRequest, res: Response) {
+    try {
+      const { candidateId } = req.params;
+      const { githubUsername, invite } = req.body as { githubUsername: string; invite?: boolean };
+
+      if (!githubUsername || typeof githubUsername !== 'string') {
+        return res.status(400).json({ error: 'githubUsername is required' });
+      }
+
+      const candidate = await prisma.candidate.update({
+        where: { id: candidateId },
+        data: { githubUsername },
+        include: { jobDescription: { include: { test: true } } }
+      });
+
+      let inviteStatus: 'sent' | 'skipped' | 'failed' = 'skipped';
+      let repoName: string | null = null;
+
+      if (invite && candidate.individualRepoUrl) {
+        try {
+          repoName = candidate.individualRepoUrl.split('/').pop() || null;
+          if (repoName) {
+            // Invite collaborator with push permissions
+            const org = config.github.orgName;
+            const octo = (githubService as any).octokit as any;
+            if (octo) {
+              await octo.repos.addCollaborator({
+                owner: org,
+                repo: repoName,
+                username: githubUsername,
+                permission: 'push'
+              });
+              inviteStatus = 'sent';
+            }
+          }
+        } catch (e: any) {
+          console.error('Failed to invite collaborator:', e?.message || e);
+          inviteStatus = 'failed';
+        }
+      }
+
+      return res.json({
+        candidateId: candidate.id,
+        githubUsername,
+        invited: inviteStatus,
+        repoName
+      });
+    } catch (error: any) {
+      console.error('setCandidateGithubUsername error:', error);
+      return res.status(500).json({ error: 'Failed to set GitHub username' });
+    }
+  },
+  /**
    * Creates a new Job Description
    */
   async createJd(req: UserRequest, res: Response) {
-    console.log('jdController.createJd: START');
     try {
       const {
         title,
@@ -66,10 +122,9 @@ export const jdController = {
         },
       });
 
-      console.log('jdController.createJd: END - JD created successfully');
       res.status(201).json(newJd);
     } catch (error) {
-      console.error('jdController.createJd: ERROR creating JD:', error);
+      console.error('Error creating JD:', error);
       res.status(500).json({ error: 'Failed to create job description' });
     }
   },
@@ -78,10 +133,9 @@ export const jdController = {
    * Gets all Job Descriptions
    */
   async getJds(req: UserRequest, res: Response) {
-    console.log('jdController.getJds: START');
     try {
       const userId = req.user?.id;
-      
+
       if (!userId) {
         return res.status(401).json({ error: 'Unauthorized' });
       }
@@ -90,7 +144,15 @@ export const jdController = {
         where: {
           creatorId: userId
         },
-        include: {
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          minExperience: true,
+          maxExperience: true,
+          languages: true,
+          createdAt: true,
+          updatedAt: true,
           _count: {
             select: { candidates: true },
           },
@@ -99,10 +161,9 @@ export const jdController = {
           createdAt: 'desc',
         },
       });
-      console.log(`jdController.getJds: END - Fetched ${jds.length} JDs for user ${userId}`);
       res.json(jds);
     } catch (error) {
-      console.error('jdController.getJds: ERROR fetching JDs:', error);
+      console.error('Error fetching JDs:', error);
       res.status(500).json({ error: 'Failed to fetch job descriptions' });
     }
   },
@@ -111,27 +172,56 @@ export const jdController = {
    * Gets a single Job Description by ID
    */
   async getJdById(req: UserRequest, res: Response) {
-    console.log('jdController.getJdById: START');
     try {
       const { id } = req.params;
       const userId = req.user?.id;
-      
+
       if (!userId) {
         return res.status(401).json({ error: 'Unauthorized' });
       }
 
       const jd = await prisma.jobDescription.findUnique({
-        where: { 
+        where: {
           id,
           creatorId: userId  // Ensure user can only access their own JDs
         },
-        include: {
-          test: true,
-          candidates: {
-            include: {
-              resume: true,
-            },
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          minExperience: true,
+          maxExperience: true,
+          languages: true,
+          projectContext: true,
+          createdAt: true,
+          updatedAt: true,
+          test: {
+            select: {
+              id: true,
+              title: true,
+              description: true,
+              difficulty: true,
+              language: true,
+              requirements: true,
+              createdAt: true
+            }
           },
+          candidates: {
+            select: {
+              id: true,
+              status: true,
+              suitabilityScore: true,
+              createdAt: true,
+              resume: {
+                select: {
+                  id: true,
+                  email: true,
+                  filename: true,
+                  uploadedAt: true
+                }
+              }
+            }
+          }
         },
       });
 
@@ -139,10 +229,9 @@ export const jdController = {
         return res.status(404).json({ error: 'Job description not found' });
       }
 
-      console.log('jdController.getJdById: END - Fetched JD by ID');
       res.json(jd);
     } catch (error) {
-      console.error('jdController.getJdById: ERROR fetching JD:', error);
+      console.error('Error fetching JD:', error);
       res.status(500).json({ error: 'Failed to fetch job description' });
     }
   },
@@ -271,6 +360,44 @@ export const jdController = {
       // Analyze the resume against the JD using AI
       console.log('jdController.uploadResumeForJd: Starting AI analysis...');
       const analysis = await geminiService.analyzeResumeForJd(resumeText, jobDescription);
+      // Fallback: if AI did not extract GitHub username, try regex on resume text and PDF link annotations
+      let extractedGithubUsername = analysis.candidateGithubUsername;
+      // Regex fallback from plain text
+      if (!extractedGithubUsername) {
+        const githubRegex = /https?:\/\/github\.com\/([A-Za-z0-9_-]+)/i;
+        const match = resumeText.match(githubRegex);
+        if (match) {
+          extractedGithubUsername = match[1];
+          console.log(`Extracted GitHub username from resume text: ${extractedGithubUsername}`);
+        }
+      }
+      // PDF link annotation fallback
+      if (!extractedGithubUsername) {
+        try {
+          const uint8 = new Uint8Array(fileBuffer);
+          const loadingTask = getDocument({ data: uint8 });
+          const pdfDoc = await loadingTask.promise;
+          for (let i = 1; i <= pdfDoc.numPages; i++) {
+            const page = await pdfDoc.getPage(i);
+            const annotations = await page.getAnnotations();
+            for (const annot of annotations) {
+              if (annot.subtype === 'Link' && annot.url) {
+                const m = annot.url.match(/https?:\/\/github\.com\/([A-Za-z0-9_-]+)/i);
+                if (m) {
+                  extractedGithubUsername = m[1];
+                  console.log(`Extracted GitHub username from PDF annotation: ${extractedGithubUsername}`);
+                  break;
+                }
+              }
+            }
+            if (extractedGithubUsername) break;
+          }
+          await (pdfDoc as any).destroy();
+        } catch (err) {
+          console.warn('PDF link extraction failed:', err);
+        }
+      }
+      console.log(`DEBUG: Final extracted GitHub username: ${extractedGithubUsername}`);
       console.log('jdController.uploadResumeForJd: AI analysis completed. Score:', analysis.suitabilityScore);
 
       // Ensure we have an email from the analysis
@@ -297,6 +424,7 @@ export const jdController = {
           status: 'PendingReview',
           suitabilityScore: analysis.suitabilityScore,
           suitabilityAnalysis: analysis.analysis as any,
+          githubUsername: extractedGithubUsername,
           jobDescription: {
             connect: { id: jdId },
           },
@@ -460,6 +588,7 @@ export const jdController = {
 
       // Loop only over candidates that need repos
       for (const candidate of candidatesToProcess) {
+        console.log(`DEBUG: Candidate ${candidate.id} has stored GitHub username: ${candidate.githubUsername}`);
         try {
           // Check if another candidate with the same email already has a repo for this JD (idempotency guard)
           const existingRepoHolder = await prisma.candidate.findFirst({
@@ -478,7 +607,8 @@ export const jdController = {
 
           if (existingRepoHolder && existingRepoHolder.individualRepoUrl) {
             console.log(`ℹ️  Re-using existing repository for ${candidate.resume.email} (created for candidate ${existingRepoHolder.id}).`);
-            await prisma.candidate.update({
+            // Update this candidate record and retrieve githubUsername
+            const updated = await prisma.candidate.update({
               where: { id: candidate.id },
               data: {
                 status: 'TestSent',
@@ -486,13 +616,30 @@ export const jdController = {
                 repoCreatedAt: new Date(),
               },
             });
-
+            // Invite if GitHub username present
+            if (updated.githubUsername) {
+              try {
+                const repoName = existingRepoHolder.individualRepoUrl!.split('/').pop() || '';
+                const octo = (githubService as any).octokit as any;
+                if (octo && repoName) {
+                  await octo.repos.addCollaborator({
+                    owner: config.github.orgName,
+                    repo: repoName,
+                    username: updated.githubUsername,
+                    permission: 'push'
+                  });
+                  console.log(`✅ Invited ${updated.githubUsername} to ${repoName}`);
+                }
+              } catch (invErr: any) {
+                console.warn('Could not invite collaborator (reused repo):', invErr?.message || invErr);
+              }
+            }
             candidateResults.push({
               candidateId: candidate.id,
               email: candidate.resume.email,
-              repoUrl: existingRepoHolder.individualRepoUrl,
+              repoUrl: existingRepoHolder.individualRepoUrl || '',
               success: true,
-              error: 'Re-used existing repository',
+              error: 'Repository already existed – skipped creation',
             });
             continue; // Skip new repo creation
           }
@@ -504,11 +651,22 @@ export const jdController = {
             candidate.id,
             projectTemplate.projectFiles,
             projectTemplate.githubWorkflows || [],
-            projectTemplate.githubIssues || []
+            // If githubIssues are not stored in DB, synthesize minimal issues from test cases
+            (projectTemplate.githubIssues && projectTemplate.githubIssues.length > 0)
+              ? projectTemplate.githubIssues
+              : (projectTemplate.testCases || []).slice(0, 5).map((tc, idx) => ({
+                  title: `Implement requirement ${idx + 1}`,
+                  description: `${tc.description || 'Complete the feature as per requirements.'}\n\nThis issue maps to test case index ${idx}.`,
+                  labels: ['assessment', 'task'],
+                  testCaseIds: [idx],
+                  difficulty: 'medium' as const,
+                  points: 5,
+                }))
           );
 
           // Persist repo URL & status in DB
-          await prisma.candidate.update({
+          // Update candidate and auto-invite if githubUsername is present
+          const updated = await prisma.candidate.update({
             where: { id: candidate.id },
             data: {
               status: 'TestSent',
@@ -516,6 +674,25 @@ export const jdController = {
               repoCreatedAt: new Date(),
             },
           });
+
+          // If we have the candidate’s GitHub username, send collaborator invite
+          if (updated.githubUsername) {
+            try {
+              const repoName = repoUrl.split('/').pop() || '';
+              const octo = (githubService as any).octokit as any;
+              if (octo && repoName) {
+                await octo.repos.addCollaborator({
+                  owner: config.github.orgName,
+                  repo: repoName,
+                  username: updated.githubUsername,
+                  permission: 'push'
+                });
+                console.log(`✅ Invited ${updated.githubUsername} to ${repoName}`);
+              }
+            } catch (invErr: any) {
+              console.warn('Could not invite collaborator:', invErr?.message || invErr);
+            }
+          }
 
           candidateResults.push({
             candidateId: candidate.id,
@@ -555,14 +732,19 @@ export const jdController = {
       // Send emails only for newly-created repos and if email is enabled
       if (successfulRepos.length > 0) {
         console.log('Sending repository links via email…');
-        const emailData: CandidateEmailData[] = successfulRepos.map(result => ({
-          email: result.email,
-          candidateName: result.email.split('@')[0],
-          jobTitle: jobDescription.title,
-          repositoryUrl: result.repoUrl,
-          companyName: process.env.COMPANY_NAME || undefined,
-          testUrl: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/test/${jobDescription.test?.id}`,
-        }));
+        const emailData: CandidateEmailData[] = successfulRepos.map(result => {
+          // Find the full candidate record to get the GitHub username
+          const candidate = candidates.find(c => c.id === result.candidateId);
+          return {
+            email: result.email,
+            candidateName: candidate?.resume.email.split('@')[0] || result.email.split('@')[0],
+            jobTitle: jobDescription.title,
+            repositoryUrl: result.repoUrl,
+            companyName: process.env.COMPANY_NAME || undefined,
+            testUrl: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/test/${jobDescription.test?.id}`,
+            githubUsername: candidate?.githubUsername || undefined,
+          };
+        });
 
         try {
           const emailResults = await emailService.sendBulkRepositoryLinks(emailData);
@@ -608,38 +790,69 @@ export const jdController = {
     try {
       console.log(`[Assessment Tracking] Fetching tracking data for JD: ${jdId}`);
 
-      // Get the Job Description with all related data
+      // Get the Job Description with optimized related data
       const jobDescription = await prisma.jobDescription.findUnique({
         where: { id: jdId },
-        include: {
+        select: {
+          id: true,
+          title: true,
+          createdAt: true,
           test: {
-            include: {
-              submissions: {
-                include: {
-                  user: true
-                }
-              },
+            select: {
+              id: true,
+              title: true,
               submissionEvents: {
-                include: {
+                select: {
+                  id: true,
+                  eventType: true,
+                  receivedAt: true,
+                  repoName: true,
+                  branch: true,
+                  pusher: true,
+                  commitSha: true,
                   candidate: {
-                    include: {
-                      resume: true
+                    select: {
+                      id: true,
+                      resume: {
+                        select: {
+                          email: true
+                        }
+                      }
                     }
                   }
                 },
                 orderBy: {
                   receivedAt: 'desc'
-                }
+                },
+                take: 20
               }
             }
           },
           candidates: {
-            include: {
-              resume: true,
+            select: {
+              id: true,
+              status: true,
+              suitabilityScore: true,
+              createdAt: true,
+              updatedAt: true,
+              resume: {
+                select: {
+                  email: true
+                }
+              },
               submissionEvents: {
+                select: {
+                  id: true,
+                  eventType: true,
+                  receivedAt: true,
+                  repoName: true,
+                  branch: true,
+                  pusher: true
+                },
                 orderBy: {
                   receivedAt: 'desc'
-                }
+                },
+                take: 10
               }
             }
           }
@@ -743,30 +956,59 @@ export const jdController = {
 
       const candidate = await prisma.candidate.findUnique({
         where: { id: candidateId },
-        include: {
-          resume: true,
+        select: {
+          id: true,
+          status: true,
+          suitabilityScore: true,
+          suitabilityAnalysis: true,
+          createdAt: true,
+          updatedAt: true,
+          resume: {
+            select: {
+              id: true,
+              email: true,
+              filename: true,
+              uploadedAt: true
+            }
+          },
           jobDescription: {
-            include: {
+            select: {
+              id: true,
+              title: true,
               test: {
-                include: {
+                select: {
+                  id: true,
+                  title: true,
                   submissions: {
-                    where: {
-                      // Find submissions that might be related to this candidate
-                      // Since submissions don't directly link to candidates, we'll get all and filter
+                    select: {
+                      id: true,
+                      status: true,
+                      result: true,
+                      createdAt: true
                     },
                     orderBy: {
                       createdAt: 'desc'
-                    }
-                  },
-                  testCases: true
+                    },
+                    take: 5
+                  }
                 }
               }
             }
           },
           submissionEvents: {
+            select: {
+              id: true,
+              eventType: true,
+              receivedAt: true,
+              repoName: true,
+              branch: true,
+              pusher: true,
+              commitSha: true
+            },
             orderBy: {
               receivedAt: 'desc'
-            }
+            },
+            take: 20
           }
         }
       });
@@ -1097,6 +1339,16 @@ export const jdController = {
               status: 'Archived',
             },
           });
+
+          // Also archive on GitHub now
+          try {
+            const repoName = (candidate.individualRepoUrl || '').split('/').pop()?.replace('.git', '') || '';
+            if (repoName) {
+              await githubService.cleanupRepository(repoName);
+            }
+          } catch (ghErr: any) {
+            console.warn('GitHub archival failed:', ghErr?.message || ghErr);
+          }
 
           archivedRepos.push({
             candidateId: candidate.id,

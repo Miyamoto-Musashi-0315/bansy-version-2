@@ -33,23 +33,8 @@ import {
 import { getJds, deleteJd } from '../services/jdService';
 import { JobDescription } from '../types';
 import { logger } from '../utils/logger';
-import React from 'react';
 
 const JdDashboard = () => {
-  console.log('JdDashboard: Component rendering');
-  
-  // Send log to backend
-  React.useEffect(() => {
-    fetch('/api/debug-log', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        type: 'JD_DASHBOARD',
-        message: 'JdDashboard component mounted',
-        timestamp: new Date().toISOString()
-      })
-    }).catch(console.error);
-  }, []);
   
   const [jds, setJds] = useState<JobDescription[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,87 +43,23 @@ const JdDashboard = () => {
   useEffect(() => {
     const fetchJds = async () => {
       try {
-        console.log('JdDashboard: Starting to fetch JDs');
-        
-        // Send log to backend
-        fetch('/api/debug-log', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: 'API_FETCH_START',
-            message: 'Starting to fetch JDs from API',
-            timestamp: new Date().toISOString()
-          })
-        }).catch(console.error);
-        
         setLoading(true);
-        
+
         // Add a timeout mechanism
         const timeoutId = setTimeout(() => {
-          console.error('JdDashboard: API call timed out after 10 seconds');
-          fetch('/api/debug-log', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              type: 'API_TIMEOUT',
-              message: 'API call timed out after 10 seconds',
-              timestamp: new Date().toISOString()
-            })
-          }).catch(console.error);
           setError('Request timed out. Please check your connection and try again.');
           setLoading(false);
-        }, 10000); // 10 second timeout
-        
+        }, 15000); // 15 second timeout
+
         const data = await getJds();
         clearTimeout(timeoutId); // Clear timeout if request succeeds
-        
-        console.log('JdDashboard: Successfully fetched JDs:', data);
-        
-        // Send success log to backend
-        fetch('/api/debug-log', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: 'API_FETCH_SUCCESS',
-            message: `Successfully fetched ${data.length} JDs`,
-            timestamp: new Date().toISOString()
-          })
-        }).catch(console.error);
-        
+
         setJds(data);
         setError(null);
       } catch (err) {
-        console.error('JdDashboard: Failed to fetch JDs:', err);
-        
-        // Send error log to backend
-        const error = err as Error;
-        fetch('/api/debug-log', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: 'API_FETCH_ERROR',
-            message: `Failed to fetch JDs: ${error.message}`,
-            stack: error.stack,
-            timestamp: new Date().toISOString()
-          })
-        }).catch(console.error);
-        
         logger.error('Failed to fetch JDs', err);
         setError('Failed to load job descriptions. Please try refreshing the page.');
       } finally {
-        console.log('JdDashboard: Setting loading to false');
-        
-        // Send final log to backend
-        fetch('/api/debug-log', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: 'API_FETCH_COMPLETE',
-            message: 'API fetch process completed',
-            timestamp: new Date().toISOString()
-          })
-        }).catch(console.error);
-        
         setLoading(false);
       }
     };

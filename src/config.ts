@@ -85,6 +85,7 @@ export const JWT_SECRET = process.env.JWT_SECRET!;
 
 interface Config {
   port: number;
+  jwtSecret: string;
   executionServiceUrl: string;
   geminiApiKey: string;
   uploadDir: string;
@@ -101,6 +102,7 @@ interface Config {
 
 export const config: Config = {
   port: parseInt(process.env.PORT || '3001', 10),
+  jwtSecret: JWT_SECRET,
   // External code-execution microservice (disabled by default)
   executionServiceUrl: process.env.EXECUTION_SERVICE_URL || '',
   geminiApiKey: process.env.GEMINI_API_KEY || '',

@@ -108,6 +108,7 @@ export interface ResumeJdAnalysis {
   };
   candidateName?: string;
   candidateEmail?: string;
+  candidateGithubUsername?: string;
 }
 
 export interface ProjectTemplate {
@@ -489,12 +490,17 @@ Resume Text:
 ${resumeText}
 ---
 
+Instructions:
+- If the resume contains a GitHub profile URL (e.g. https://github.com/username or github.com/username), extract the username and set it as "candidateGithubUsername".
+- If no GitHub profile link is found, set "candidateGithubUsername" to null.
+- Retain the existing instructions for extracting candidateName and candidateEmail.
+
 Return ONLY a JSON object with this exact structure:
 {
   "suitabilityScore": number (0-10 scale),
   "analysis": {
     "strengths": ["string", ...],
-    "weaknesses": ["string", ...], 
+    "weaknesses": ["string", ...],
     "experienceMatch": "string",
     "skillMatch": ["string", ...],
     "languageMatch": ["string", ...],
@@ -502,7 +508,8 @@ Return ONLY a JSON object with this exact structure:
     "summary": "string"
   },
   "candidateName": "string or null",
-  "candidateEmail": "string or null"
+  "candidateEmail": "string or null",
+  "candidateGithubUsername": "string or null"
 }`;
 
     try {

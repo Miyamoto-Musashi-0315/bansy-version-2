@@ -5365,6 +5365,7 @@ export namespace Prisma {
     id: string | null
     status: string | null
     suitabilityScore: number | null
+    githubUsername: string | null
     individualRepoUrl: string | null
     repoCreatedAt: Date | null
     createdAt: Date | null
@@ -5377,6 +5378,7 @@ export namespace Prisma {
     id: string | null
     status: string | null
     suitabilityScore: number | null
+    githubUsername: string | null
     individualRepoUrl: string | null
     repoCreatedAt: Date | null
     createdAt: Date | null
@@ -5390,6 +5392,7 @@ export namespace Prisma {
     status: number
     suitabilityScore: number
     suitabilityAnalysis: number
+    githubUsername: number
     individualRepoUrl: number
     repoCreatedAt: number
     createdAt: number
@@ -5412,6 +5415,7 @@ export namespace Prisma {
     id?: true
     status?: true
     suitabilityScore?: true
+    githubUsername?: true
     individualRepoUrl?: true
     repoCreatedAt?: true
     createdAt?: true
@@ -5424,6 +5428,7 @@ export namespace Prisma {
     id?: true
     status?: true
     suitabilityScore?: true
+    githubUsername?: true
     individualRepoUrl?: true
     repoCreatedAt?: true
     createdAt?: true
@@ -5437,6 +5442,7 @@ export namespace Prisma {
     status?: true
     suitabilityScore?: true
     suitabilityAnalysis?: true
+    githubUsername?: true
     individualRepoUrl?: true
     repoCreatedAt?: true
     createdAt?: true
@@ -5537,6 +5543,7 @@ export namespace Prisma {
     status: string
     suitabilityScore: number | null
     suitabilityAnalysis: JsonValue | null
+    githubUsername: string | null
     individualRepoUrl: string | null
     repoCreatedAt: Date | null
     createdAt: Date
@@ -5569,6 +5576,7 @@ export namespace Prisma {
     status?: boolean
     suitabilityScore?: boolean
     suitabilityAnalysis?: boolean
+    githubUsername?: boolean
     individualRepoUrl?: boolean
     repoCreatedAt?: boolean
     createdAt?: boolean
@@ -5586,6 +5594,7 @@ export namespace Prisma {
     status?: boolean
     suitabilityScore?: boolean
     suitabilityAnalysis?: boolean
+    githubUsername?: boolean
     individualRepoUrl?: boolean
     repoCreatedAt?: boolean
     createdAt?: boolean
@@ -5601,6 +5610,7 @@ export namespace Prisma {
     status?: boolean
     suitabilityScore?: boolean
     suitabilityAnalysis?: boolean
+    githubUsername?: boolean
     individualRepoUrl?: boolean
     repoCreatedAt?: boolean
     createdAt?: boolean
@@ -5616,6 +5626,7 @@ export namespace Prisma {
     status?: boolean
     suitabilityScore?: boolean
     suitabilityAnalysis?: boolean
+    githubUsername?: boolean
     individualRepoUrl?: boolean
     repoCreatedAt?: boolean
     createdAt?: boolean
@@ -5624,7 +5635,7 @@ export namespace Prisma {
     resumeId?: boolean
   }
 
-  export type CandidateOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "status" | "suitabilityScore" | "suitabilityAnalysis" | "individualRepoUrl" | "repoCreatedAt" | "createdAt" | "updatedAt" | "jobDescriptionId" | "resumeId", ExtArgs["result"]["candidate"]>
+  export type CandidateOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "status" | "suitabilityScore" | "suitabilityAnalysis" | "githubUsername" | "individualRepoUrl" | "repoCreatedAt" | "createdAt" | "updatedAt" | "jobDescriptionId" | "resumeId", ExtArgs["result"]["candidate"]>
   export type CandidateInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     jobDescription?: boolean | JobDescriptionDefaultArgs<ExtArgs>
     resume?: boolean | ResumeDefaultArgs<ExtArgs>
@@ -5652,6 +5663,7 @@ export namespace Prisma {
       status: string
       suitabilityScore: number | null
       suitabilityAnalysis: Prisma.JsonValue | null
+      githubUsername: string | null
       individualRepoUrl: string | null
       repoCreatedAt: Date | null
       createdAt: Date
@@ -6088,6 +6100,7 @@ export namespace Prisma {
     readonly status: FieldRef<"Candidate", 'String'>
     readonly suitabilityScore: FieldRef<"Candidate", 'Float'>
     readonly suitabilityAnalysis: FieldRef<"Candidate", 'Json'>
+    readonly githubUsername: FieldRef<"Candidate", 'String'>
     readonly individualRepoUrl: FieldRef<"Candidate", 'String'>
     readonly repoCreatedAt: FieldRef<"Candidate", 'DateTime'>
     readonly createdAt: FieldRef<"Candidate", 'DateTime'>
@@ -13495,6 +13508,7 @@ export namespace Prisma {
     status: 'status',
     suitabilityScore: 'suitabilityScore',
     suitabilityAnalysis: 'suitabilityAnalysis',
+    githubUsername: 'githubUsername',
     individualRepoUrl: 'individualRepoUrl',
     repoCreatedAt: 'repoCreatedAt',
     createdAt: 'createdAt',
@@ -13952,6 +13966,7 @@ export namespace Prisma {
     status?: StringFilter<"Candidate"> | string
     suitabilityScore?: FloatNullableFilter<"Candidate"> | number | null
     suitabilityAnalysis?: JsonNullableFilter<"Candidate">
+    githubUsername?: StringNullableFilter<"Candidate"> | string | null
     individualRepoUrl?: StringNullableFilter<"Candidate"> | string | null
     repoCreatedAt?: DateTimeNullableFilter<"Candidate"> | Date | string | null
     createdAt?: DateTimeFilter<"Candidate"> | Date | string
@@ -13968,6 +13983,7 @@ export namespace Prisma {
     status?: SortOrder
     suitabilityScore?: SortOrderInput | SortOrder
     suitabilityAnalysis?: SortOrderInput | SortOrder
+    githubUsername?: SortOrderInput | SortOrder
     individualRepoUrl?: SortOrderInput | SortOrder
     repoCreatedAt?: SortOrderInput | SortOrder
     createdAt?: SortOrder
@@ -13988,6 +14004,7 @@ export namespace Prisma {
     status?: StringFilter<"Candidate"> | string
     suitabilityScore?: FloatNullableFilter<"Candidate"> | number | null
     suitabilityAnalysis?: JsonNullableFilter<"Candidate">
+    githubUsername?: StringNullableFilter<"Candidate"> | string | null
     individualRepoUrl?: StringNullableFilter<"Candidate"> | string | null
     repoCreatedAt?: DateTimeNullableFilter<"Candidate"> | Date | string | null
     createdAt?: DateTimeFilter<"Candidate"> | Date | string
@@ -14004,6 +14021,7 @@ export namespace Prisma {
     status?: SortOrder
     suitabilityScore?: SortOrderInput | SortOrder
     suitabilityAnalysis?: SortOrderInput | SortOrder
+    githubUsername?: SortOrderInput | SortOrder
     individualRepoUrl?: SortOrderInput | SortOrder
     repoCreatedAt?: SortOrderInput | SortOrder
     createdAt?: SortOrder
@@ -14025,6 +14043,7 @@ export namespace Prisma {
     status?: StringWithAggregatesFilter<"Candidate"> | string
     suitabilityScore?: FloatNullableWithAggregatesFilter<"Candidate"> | number | null
     suitabilityAnalysis?: JsonNullableWithAggregatesFilter<"Candidate">
+    githubUsername?: StringNullableWithAggregatesFilter<"Candidate"> | string | null
     individualRepoUrl?: StringNullableWithAggregatesFilter<"Candidate"> | string | null
     repoCreatedAt?: DateTimeNullableWithAggregatesFilter<"Candidate"> | Date | string | null
     createdAt?: DateTimeWithAggregatesFilter<"Candidate"> | Date | string
@@ -14718,6 +14737,7 @@ export namespace Prisma {
     status: string
     suitabilityScore?: number | null
     suitabilityAnalysis?: NullableJsonNullValueInput | InputJsonValue
+    githubUsername?: string | null
     individualRepoUrl?: string | null
     repoCreatedAt?: Date | string | null
     createdAt?: Date | string
@@ -14732,6 +14752,7 @@ export namespace Prisma {
     status: string
     suitabilityScore?: number | null
     suitabilityAnalysis?: NullableJsonNullValueInput | InputJsonValue
+    githubUsername?: string | null
     individualRepoUrl?: string | null
     repoCreatedAt?: Date | string | null
     createdAt?: Date | string
@@ -14746,6 +14767,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     suitabilityScore?: NullableFloatFieldUpdateOperationsInput | number | null
     suitabilityAnalysis?: NullableJsonNullValueInput | InputJsonValue
+    githubUsername?: NullableStringFieldUpdateOperationsInput | string | null
     individualRepoUrl?: NullableStringFieldUpdateOperationsInput | string | null
     repoCreatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -14760,6 +14782,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     suitabilityScore?: NullableFloatFieldUpdateOperationsInput | number | null
     suitabilityAnalysis?: NullableJsonNullValueInput | InputJsonValue
+    githubUsername?: NullableStringFieldUpdateOperationsInput | string | null
     individualRepoUrl?: NullableStringFieldUpdateOperationsInput | string | null
     repoCreatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -14774,6 +14797,7 @@ export namespace Prisma {
     status: string
     suitabilityScore?: number | null
     suitabilityAnalysis?: NullableJsonNullValueInput | InputJsonValue
+    githubUsername?: string | null
     individualRepoUrl?: string | null
     repoCreatedAt?: Date | string | null
     createdAt?: Date | string
@@ -14787,6 +14811,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     suitabilityScore?: NullableFloatFieldUpdateOperationsInput | number | null
     suitabilityAnalysis?: NullableJsonNullValueInput | InputJsonValue
+    githubUsername?: NullableStringFieldUpdateOperationsInput | string | null
     individualRepoUrl?: NullableStringFieldUpdateOperationsInput | string | null
     repoCreatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -14798,6 +14823,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     suitabilityScore?: NullableFloatFieldUpdateOperationsInput | number | null
     suitabilityAnalysis?: NullableJsonNullValueInput | InputJsonValue
+    githubUsername?: NullableStringFieldUpdateOperationsInput | string | null
     individualRepoUrl?: NullableStringFieldUpdateOperationsInput | string | null
     repoCreatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -15675,6 +15701,7 @@ export namespace Prisma {
     status?: SortOrder
     suitabilityScore?: SortOrder
     suitabilityAnalysis?: SortOrder
+    githubUsername?: SortOrder
     individualRepoUrl?: SortOrder
     repoCreatedAt?: SortOrder
     createdAt?: SortOrder
@@ -15691,6 +15718,7 @@ export namespace Prisma {
     id?: SortOrder
     status?: SortOrder
     suitabilityScore?: SortOrder
+    githubUsername?: SortOrder
     individualRepoUrl?: SortOrder
     repoCreatedAt?: SortOrder
     createdAt?: SortOrder
@@ -15703,6 +15731,7 @@ export namespace Prisma {
     id?: SortOrder
     status?: SortOrder
     suitabilityScore?: SortOrder
+    githubUsername?: SortOrder
     individualRepoUrl?: SortOrder
     repoCreatedAt?: SortOrder
     createdAt?: SortOrder
@@ -17377,6 +17406,7 @@ export namespace Prisma {
     status: string
     suitabilityScore?: number | null
     suitabilityAnalysis?: NullableJsonNullValueInput | InputJsonValue
+    githubUsername?: string | null
     individualRepoUrl?: string | null
     repoCreatedAt?: Date | string | null
     createdAt?: Date | string
@@ -17390,6 +17420,7 @@ export namespace Prisma {
     status: string
     suitabilityScore?: number | null
     suitabilityAnalysis?: NullableJsonNullValueInput | InputJsonValue
+    githubUsername?: string | null
     individualRepoUrl?: string | null
     repoCreatedAt?: Date | string | null
     createdAt?: Date | string
@@ -17514,6 +17545,7 @@ export namespace Prisma {
     status?: StringFilter<"Candidate"> | string
     suitabilityScore?: FloatNullableFilter<"Candidate"> | number | null
     suitabilityAnalysis?: JsonNullableFilter<"Candidate">
+    githubUsername?: StringNullableFilter<"Candidate"> | string | null
     individualRepoUrl?: StringNullableFilter<"Candidate"> | string | null
     repoCreatedAt?: DateTimeNullableFilter<"Candidate"> | Date | string | null
     createdAt?: DateTimeFilter<"Candidate"> | Date | string
@@ -17722,6 +17754,7 @@ export namespace Prisma {
     status: string
     suitabilityScore?: number | null
     suitabilityAnalysis?: NullableJsonNullValueInput | InputJsonValue
+    githubUsername?: string | null
     individualRepoUrl?: string | null
     repoCreatedAt?: Date | string | null
     createdAt?: Date | string
@@ -17735,6 +17768,7 @@ export namespace Prisma {
     status: string
     suitabilityScore?: number | null
     suitabilityAnalysis?: NullableJsonNullValueInput | InputJsonValue
+    githubUsername?: string | null
     individualRepoUrl?: string | null
     repoCreatedAt?: Date | string | null
     createdAt?: Date | string
@@ -18381,6 +18415,7 @@ export namespace Prisma {
     status: string
     suitabilityScore?: number | null
     suitabilityAnalysis?: NullableJsonNullValueInput | InputJsonValue
+    githubUsername?: string | null
     individualRepoUrl?: string | null
     repoCreatedAt?: Date | string | null
     createdAt?: Date | string
@@ -18394,6 +18429,7 @@ export namespace Prisma {
     status: string
     suitabilityScore?: number | null
     suitabilityAnalysis?: NullableJsonNullValueInput | InputJsonValue
+    githubUsername?: string | null
     individualRepoUrl?: string | null
     repoCreatedAt?: Date | string | null
     createdAt?: Date | string
@@ -18464,6 +18500,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     suitabilityScore?: NullableFloatFieldUpdateOperationsInput | number | null
     suitabilityAnalysis?: NullableJsonNullValueInput | InputJsonValue
+    githubUsername?: NullableStringFieldUpdateOperationsInput | string | null
     individualRepoUrl?: NullableStringFieldUpdateOperationsInput | string | null
     repoCreatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -18477,6 +18514,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     suitabilityScore?: NullableFloatFieldUpdateOperationsInput | number | null
     suitabilityAnalysis?: NullableJsonNullValueInput | InputJsonValue
+    githubUsername?: NullableStringFieldUpdateOperationsInput | string | null
     individualRepoUrl?: NullableStringFieldUpdateOperationsInput | string | null
     repoCreatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -18677,6 +18715,7 @@ export namespace Prisma {
     status: string
     suitabilityScore?: number | null
     suitabilityAnalysis?: NullableJsonNullValueInput | InputJsonValue
+    githubUsername?: string | null
     individualRepoUrl?: string | null
     repoCreatedAt?: Date | string | null
     createdAt?: Date | string
@@ -18689,6 +18728,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     suitabilityScore?: NullableFloatFieldUpdateOperationsInput | number | null
     suitabilityAnalysis?: NullableJsonNullValueInput | InputJsonValue
+    githubUsername?: NullableStringFieldUpdateOperationsInput | string | null
     individualRepoUrl?: NullableStringFieldUpdateOperationsInput | string | null
     repoCreatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -18702,6 +18742,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     suitabilityScore?: NullableFloatFieldUpdateOperationsInput | number | null
     suitabilityAnalysis?: NullableJsonNullValueInput | InputJsonValue
+    githubUsername?: NullableStringFieldUpdateOperationsInput | string | null
     individualRepoUrl?: NullableStringFieldUpdateOperationsInput | string | null
     repoCreatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -18715,6 +18756,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     suitabilityScore?: NullableFloatFieldUpdateOperationsInput | number | null
     suitabilityAnalysis?: NullableJsonNullValueInput | InputJsonValue
+    githubUsername?: NullableStringFieldUpdateOperationsInput | string | null
     individualRepoUrl?: NullableStringFieldUpdateOperationsInput | string | null
     repoCreatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -18771,6 +18813,7 @@ export namespace Prisma {
     status: string
     suitabilityScore?: number | null
     suitabilityAnalysis?: NullableJsonNullValueInput | InputJsonValue
+    githubUsername?: string | null
     individualRepoUrl?: string | null
     repoCreatedAt?: Date | string | null
     createdAt?: Date | string
@@ -18783,6 +18826,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     suitabilityScore?: NullableFloatFieldUpdateOperationsInput | number | null
     suitabilityAnalysis?: NullableJsonNullValueInput | InputJsonValue
+    githubUsername?: NullableStringFieldUpdateOperationsInput | string | null
     individualRepoUrl?: NullableStringFieldUpdateOperationsInput | string | null
     repoCreatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -18796,6 +18840,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     suitabilityScore?: NullableFloatFieldUpdateOperationsInput | number | null
     suitabilityAnalysis?: NullableJsonNullValueInput | InputJsonValue
+    githubUsername?: NullableStringFieldUpdateOperationsInput | string | null
     individualRepoUrl?: NullableStringFieldUpdateOperationsInput | string | null
     repoCreatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -18809,6 +18854,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     suitabilityScore?: NullableFloatFieldUpdateOperationsInput | number | null
     suitabilityAnalysis?: NullableJsonNullValueInput | InputJsonValue
+    githubUsername?: NullableStringFieldUpdateOperationsInput | string | null
     individualRepoUrl?: NullableStringFieldUpdateOperationsInput | string | null
     repoCreatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string

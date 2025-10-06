@@ -368,7 +368,7 @@ class GithubService {
       console.log('Attempting to create repository with params:', {
         owner: this.config.organizationName,
         name: repoName,
-        private: false,
+        private: true,
         auto_init: true,
         isOrganization: isOrganization,
       });
@@ -379,7 +379,7 @@ class GithubService {
         const response = await this.octokit!.repos.createInOrg({
           org: this.config.organizationName,
           name: repoName,
-          private: false,
+          private: true,
           auto_init: true,
           description: `Temporary repository for test ${testId} by user ${userId}`,
         });
@@ -388,7 +388,7 @@ class GithubService {
         // Create for authenticated installation (works for user accounts)
         const response = await this.octokit!.repos.createForAuthenticatedUser({
           name: repoName,
-          private: false,
+          private: true,
           auto_init: true,
           description: `Temporary repository for test ${testId} by user ${userId}`,
         });
@@ -756,7 +756,7 @@ This issue is validated by test case(s): ${issue.testCaseIds.map(id => `#${id + 
       const response = await this.octokit!.repos.createInOrg({
         org: this.config.organizationName,
         name: repoName,
-        private: false,
+        private: true,
         auto_init: true,
         description: `Assessment repository for candidate ${candidateId}`,
       });
@@ -893,8 +893,16 @@ jobs:
         effectiveWorkflowFiles.push({ path: '.github/workflows/ci.yml', content: defaultCi });
       }
       
-      // Combine all files (project files + workflow files)
-      const allFiles = [...projectFiles, ...effectiveWorkflowFiles];
+      // Ensure README with test details exists
+      const hasReadme = (projectFiles || []).some(f => f.path.toLowerCase() === 'readme.md');
+      const readmeFile = hasReadme ? [] : [{
+        path: 'README.md',
+        content: `# Coding Assessment\n\nThis is your private repository for the assessment.\n\n## Test Details\n- Test ID: ${shortTestId}\n- Candidate ID: ${candidateId}\n\n## Requirements\n${(projectFiles || []).length > 0 ? '- See project files and GitHub Issues for tasks.\n' : ''}
+\n## Running Tests\n- Use the included GitHub Actions workflow or run tests locally (see project files under tests/ or instructions in package/config files).\n\n## Notes\n- Your repository is private. Only you and invited collaborators can access it.\n`
+      }];
+
+      // Combine all files (project files + workflow files + generated README)
+      const allFiles = [...projectFiles, ...effectiveWorkflowFiles, ...readmeFile];
       
       // Add all files to the repository
       if (allFiles.length > 0) {

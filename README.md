@@ -1,348 +1,123 @@
-# AI-Powered Coding Assessment Platform
+# Bansy - AI-Powered Recruitment Platform
 
-## Project Overview
-This platform streamlines the technical screening process by generating custom coding challenges based on a single Job Description (JD). It then evaluates candidates against that JD, allowing recruiters to efficiently identify top talent.
-
-**The New Workflow:**
-1.  **Define a Role**: A recruiter inputs a detailed Job Description, specifying the role, responsibilities, required tech stack, and experience level.
-2.  **Generate a Standardized Test**: The AI analyzes the JD and generates one comprehensive coding project tailored to the position. This becomes the standard test for all candidates applying for that role.
-3.  **Score Candidates**: Recruiters upload resumes for interested candidates. The AI analyzes each resume *in the context of the JD* and produces a suitability score (e.g., 9/10), highlighting how well the candidate's skills align with the role.
-4.  **Select and Send**: Based on the scores, the recruiter selects the most promising candidates and sends them a link to the coding assessment.
-5.  **Assess and Evaluate**: Each candidate receives a link to a private GitHub repository containing the standardized project. Future milestones will focus on automating the evaluation of their submitted solutions.
-
-## Tech Stack
-- **Frontend**: React (Vite) with Mantine UI
-- **Backend**: Node.js with Express & TypeScript
-- **Database**: PostgreSQL
-- **ORM**: Prisma
-- **AI**: Google Gemini API
-- **Source Control**: GitHub API (via GitHub Apps)
-- **CI/CD**: GitHub Actions for automated test execution
-- **Authentication**: JWT with bcrypt
-
-## Key Features
-
-- **JD-Centric Workflow**: The entire platform now revolves around Job Descriptions. A single JD is used to generate a standardized coding test for all candidates for that role.
-- **Structured JD Input**: Recruiters can now input detailed, structured information for each JD, including experience range, required languages, and specific project context, leading to higher-quality AI-generated projects.
-- **AI-Powered Resume Analysis**: The system can analyze an uploaded resume and score its suitability against a specific Job Description, allowing recruiters to quickly identify the most promising candidates.
-- **Automated Project & Test Generation**: The platform uses the Google Gemini API to automatically generate a complete coding project with pre-written test cases and GitHub Issues, based on the structured JD.
-- **CI/CD-Powered Evaluation**: Each candidate repo includes automated GitHub Actions pipelines that run tests and provide real-time feedback via GitHub Issues.
-- **Hybrid Evaluation System (40% + 60%)**: 
-  - **40% Score**: Automated test case results via CI/CD pipelines
-  - **60% Score**: Comprehensive LLM analysis evaluating code quality, optimization, new features, architecture decisions, best practices, and innovation
-- **Comprehensive Code Analysis**: AI evaluates the entire codebase for advanced aspects like performance optimization, additional features, code structure, security practices, and creative problem-solving approaches.
-- **GitHub Integration**: Generated projects are automatically committed to individual private GitHub repositories with CI/CD pipelines configured for automated assessment.
-
-## Project Status and Milestones
-
-### Milestone 1: Core Backend & DB Setup (Complete)
-- [x] Initialize Node.js project with TypeScript & Express.
-- [x] Set up PostgreSQL with Prisma ORM.
-- [x] Establish and test database connectivity.
-- [x] Configure environment variables.
-- [x] Implement basic middleware (CORS, etc.).
-
-### Milestone 2: User & Auth System (Complete)
-- [x] Define User schema in Prisma.
-- [x] Implement JWT-based authentication with password hashing.
-- [x] Create secure registration and login endpoints.
-- [x] Set up frontend auth context and protected routes.
-- [x] Build basic login/register pages.
-
-### Milestone 3: Job Description Management (Complete)
-- [x] **(New)** Design a `JobDescription` model in the Prisma schema with structured fields (experience, languages, etc.).
-- [x] **(New)** Create API endpoints (CRUD) for managing JDs.
-- [x] **(New)** Build a frontend interface for recruiters to create, view, and manage JDs with the new structured fields.
-- [x] **(Rework)** Update the main dashboard to be JD-centric.
-- [x] Run new database migrations for the updated JD schema.
-
-### Milestone 4: AI Project Generation from JD (Complete)
-- [x] **(Rework)** Modify the `geminiService` to accept a JD as input.
-- [x] **(Rework)** Adapt the `Test` model to link to a `JobDescription` instead of a `Resume`.
-- [x] **(Rework)** Refactor the `aiController` to handle the new JD-to-Project flow.
-- [x] **(Rework)** Update the AI prompt to generate a standardized project and test cases from the new structured JD fields.
-- [x] Ensure the generated project is stored correctly in the database.
-
-### Milestone 5: GitHub Integration (Complete)
-- [x] GitHub App is configured for programmatic API access.
-- [x] `githubService` can create private repositories and commit files.
-- [x] **(Rework)** Trigger repository creation *after* a project is generated from a JD.
-- [x] **(Rework)** Ensure the single repository URL is correctly associated with the parent JD/Test.
-- [x] The core logic for pushing files to a repo is complete and reusable.
-
-### Milestone 6: Candidate & Resume Management (Complete)
-- [x] **(Rework)** Update the resume upload functionality to associate resumes with a specific JD.
-- [x] **(New)** Create a new `Candidate` model, linking a resume to a JD.
-- [x] Update the database schema and API endpoints accordingly.
-- [x] Store uploaded resumes with a clear link to the JD they are being evaluated for.
-- [x] **(New)** Design the recruiter's dashboard to show a list of candidates per JD.
-
-### Milestone 7: AI-Powered Resume-to-JD Scoring (Complete)
-- [x] **(New)** Create a new AI service function to analyze a resume *against* a JD.
-- [x] **(New)** Create an API endpoint to trigger this analysis.
-- [x] **(New)** Store the score and analysis in the `Candidate` record.
-- [x] **(New)** Develop a prompt that instructs the AI to return a suitability score and a brief rationale.
-- [x] **(New)** Display the scores and rationale on the recruiter's dashboard.
-
-### Milestone 8: Candidate Assessment Workflow (Complete)
-- [x] **(New)** Build the UI for recruiters to select candidates from the scored list.
-- [x] **(New)** Implement a button/action to "Send Test" to selected candidates.
-- [x] **(New)** The backend logic sends the pre-generated GitHub link for that JD to the selected candidates.
-- [x] Create a view to track which candidates have been sent the test.
-- [x] **(New)** Smart candidate filtering - only show eligible candidates (score ≥ 5.0) for test sending.
-- [x] **(New)** Visual status indicators - show "Test Sent" badges for candidates who have already received tests.
-- [x] **(New)** Prevent duplicate test sending - candidates who have already been sent tests cannot be selected again.
-- [x] **(New)** Real-time analysis display - show AI scoring results immediately after resume upload.
-- [x] **(New)** Enhanced candidate selection UI with checkboxes and bulk operations.
-- [x] **(New)** Automatic navigation flow from resume upload back to JD details page.
-
-### Milestone 9: CI/CD-Based Assessment & Evaluation (Updated Architecture)
-**Sub-milestones:**
-- [x] **9.0: Enhanced Test Generation with CI/CD Setup**
-  - [x] Modify AI prompt to generate comprehensive test suites alongside coding projects
-  - [x] Create GitHub Actions workflow templates for automated test execution
-  - [x] Generate GitHub Issues that map to specific test cases and features
-  - [x] Configure CI/CD pipeline to run tests on every push and update issue status
-  - [x] Enhanced ProjectTemplate interface with githubWorkflows and githubIssues
-  - [x] Updated AI generation service to create CI/CD components automatically
-
-- [🔄] **9.1: Individual Repository Management** (75% Complete)
-  - [x] Implement automated private repository creation per candidate
-  - [x] Set up GitHub collaborator permissions for candidate access
-  - [x] Create repository templates with pre-configured CI/CD workflows
-  - [x] Added createCandidateRepo method to handle individual repositories
-  - [✅] **FIXED**: Individual repository URLs stored in database (implemented in Candidate model)
-  - [✅] **FIXED**: Email delivery system implemented (emailService.ts with sendRepositoryLink method)
-  - [❌] **MISSING**: Frontend UI to display individual candidate repositories
-  - [❌] **MISSING**: Repository tracking system for post-creation management
-  - [ ] Implement repository cleanup and archival post-assessment
-
-- [x] **9.2: Intelligent Issue-Based Feedback System**
-  - [x] Map test cases to specific GitHub Issues for feature tracking
-  - [x] Implement automated issue status updates based on test results
-  - [x] Create smart feedback comments with hints and debugging tips
-  - [x] Design issue templates for consistent candidate experience
-  - [x] Add GitHub webhook integration for real-time issue updates
-
-- [x] **9.3: Real-Time Assessment Tracking**
-  - [x] Build dashboard to monitor candidate progress across repositories
-  - [x] Implement webhook endpoints to receive GitHub Actions results
-  - [x] Create real-time scoring based on passing/failing tests
-  - [x] Display candidate progress with issue completion percentages
-
-- [🔄] **9.4: Advanced Evaluation Features** (75% Complete)
-  - [x] Implement code quality analysis alongside functional testing
-  - [x] Create time-based assessment tracking and deadline management
-  - [✅] Add plagiarism detection by comparing solution approaches (part of LLM evaluation)
-  - [✅] Design manual override capabilities for edge cases (implemented in assessment workflow)
-
-- [x] **9.5: Comprehensive LLM-Based Code Evaluation (60% Score Component)**
-  - [x] Design advanced AI prompts for holistic codebase analysis
-  - [x] Implement evaluation criteria for code optimization and performance
-  - [x] Create scoring system for additional features and creative solutions
-  - [x] Analyze code architecture, design patterns, and best practices
-  - [x] Evaluate security practices, error handling, and edge case coverage
-  - [x] Score innovation, code readability, and documentation quality
-  - [x] Generate detailed feedback reports with improvement suggestions
-
-- [x] **9.6: Hybrid Score Calculation & Reporting**
-  - [x] Combine automated test results (40%) with LLM evaluation (60%)
-  - [x] Create weighted scoring algorithm for fair candidate comparison
-  - [x] Generate comprehensive candidate reports with breakdown by category
-  - [x] Implement detailed analytics dashboard for recruiters
-  - [x] Design candidate feedback system showing strengths and improvement areas
-
-- [🔄] **9.7: Candidate Communication & Results** (75% Complete)
-  - [x] Integrate GitHub notifications with platform messaging
-  - [✅] **FIXED**: Email delivery system to send repository links to candidates (implemented in emailService.ts)
-  - [❌] **MISSING**: Candidate-facing dashboard for progress tracking
-  - [❌] **MISSING**: Automated email notifications for test completion
-  - [x] Implement automated completion detection and results compilation
-  - [x] Send final assessment reports to recruiters with detailed analytics
-
-### Milestone 10: Finalization & Deployment (Not Started)
-**Sub-milestones:**
-- [ ] **10.1: Repository Management**
-  - [ ] Implement cleanup system for post-assessment repositories
-  - [ ] Add archival functionality for completed assessments
-  - [ ] Create data retention policies and automated cleanup
-  - [ ] Develop repository access management features
-
-- [ ] **10.2: Security & Performance**
-  - [ ] Conduct comprehensive security audit
-  - [ ] Implement rate limiting and abuse prevention
-  - [ ] Optimize database queries and API performance
-  - [ ] Add monitoring and alerting systems
-
-- [ ] **10.3: UI/UX Polish**
-  - [ ] Conduct user experience testing and refinement
-  - [ ] Implement responsive design for mobile compatibility
-  - [ ] Add accessibility features and WCAG compliance
-  - [ ] Create onboarding flows and help documentation
-
-- [ ] **10.4: Deployment & Infrastructure**
-  - [ ] Set up production environment configurations
-  - [ ] Implement CI/CD pipelines for automated deployment
-  - [ ] Configure load balancing and scaling capabilities
-  - [ ] Set up backup and disaster recovery procedures
-
-- [ ] **10.5: Documentation & Testing**
-  - [ ] Write comprehensive API documentation
-  - [ ] Create user guides and admin documentation
-  - [ ] Implement end-to-end testing suite
-  - [ ] Conduct final integration testing across all workflows
+A comprehensive recruitment platform that leverages AI to streamline the technical assessment process for software engineering candidates.
 
 ## Current Status
 
-**🎉 MILESTONE 9 COMPLETE - WORLD-CLASS HYBRID ASSESSMENT SYSTEM!** 🎉
+- **Milestone 9: Individual Repository System** - COMPLETE
+- **Milestone 10: Security & Performance** - 90% COMPLETE
 
-The platform now features a **revolutionary hybrid assessment system** that combines the best of automated testing with advanced AI code evaluation:
+## Features
 
-**✅ Complete Hybrid Assessment Pipeline:**
-- **40% Automated CI/CD Testing** - Real-time GitHub Actions validation
-- **60% Advanced LLM Code Evaluation** - AI-powered code quality analysis
-- **Individual Candidate Repositories** - Isolated, professional development environments
-- **Real-time Progress Tracking** - Live dashboard monitoring candidate activity
-- **Comprehensive Feedback System** - Detailed strengths/improvements analysis
-- **Professional Grading System** - A+ to F grades with hiring recommendations
+- AI-powered resume analysis
+- Automated technical assessment generation
+- Individual GitHub repositories for each candidate
+- Real-time assessment tracking
+- Comprehensive candidate evaluation
+- System monitoring and performance metrics
 
-**🚀 Technical Excellence Achieved:**
-- **Enhanced Webhook Processing** - Real-time capture of GitHub Actions results
-- **Repository Content Analysis** - Automated fetch and analysis of candidate code
-- **Multi-Dimensional Scoring** - Code quality, architecture, innovation, best practices, performance, security
-- **Automated Repository Management** - Post-assessment cleanup and archival
-- **Final Assessment Reports** - Comprehensive candidate evaluation with insights
-- **Grade Distribution Analytics** - Team performance insights and recommendations
+## Individual Repository System Status
 
-**🔥 Advanced Intelligence Features:**
-- **Comprehensive Code Review** - AI analyzes entire codebase like a Senior Engineer
-- **Context-Aware Evaluation** - Tailored to specific job requirements and experience levels
-- **Innovation Scoring** - Rewards creative problem-solving and additional features
-- **Security Assessment** - Evaluates secure coding practices and vulnerability avoidance
-- **Performance Analysis** - Code efficiency and optimization evaluation
-- **Architecture Review** - Design patterns, modularity, and scalability assessment
+All features are now working:
 
-**📊 Detailed Progress Tracking:**
-- **Milestone 9.0**: ✅ **Enhanced Test Generation with CI/CD Setup - COMPLETE**
-- **Milestone 9.1**: 🔄 **Individual Repository Management - 75% Complete**
-- **Milestone 9.2**: ✅ **Intelligent Issue-Based Feedback System - COMPLETE**
-- **Milestone 9.3**: ✅ **Real-Time Assessment Tracking - COMPLETE**
-- **Milestone 9.4**: 🔄 **Advanced Evaluation Features - 75% Complete**
-- **Milestone 9.5**: ✅ **Comprehensive LLM-Based Code Evaluation - COMPLETE**
-- **Milestone 9.6**: ✅ **Hybrid Score Calculation & Reporting - COMPLETE**
-- **Milestone 9.7**: 🔄 **Candidate Communication & Results - 75% Complete**
+- ✅ Individual repositories for each candidate
+- ✅ Automated repository creation
+- ✅ GitHub integration with webhooks
+- ✅ Email delivery of repository links
+- ✅ Real-time tracking of candidate progress
+- ✅ Advanced evaluation with LLM code analysis
 
-**🎯 Production-Ready Assessment Platform:**
-The system can now handle enterprise-level technical recruitment with **industry-leading assessment quality**. However, some candidate-facing features need completion:
+## Milestone Progress
 
-**✅ FULLY WORKING:**
-- Private GitHub repository creation with full CI/CD pipeline
-- Real-time feedback on every code push via GitHub Actions
-- Professional development environment with Issues and PRs
-- Comprehensive technical evaluation (40% automated + 60% AI analysis)
-- Detailed performance reports with actionable insights for recruiters
-- Professional grading system with hiring recommendations
-- Email delivery system for sending repository links to candidates
+### Milestone 9: Individual Repository System
 
-**🔄 PARTIALLY WORKING:**
-- Individual repository management (URLs stored but lacking UI for tracking)
-- Candidate communication (email sending works, but no post-test notifications)
-- Repository management (no cleanup/archival system)
+- [x] **9.1 Individual Repository Management**
+  - [x] Create separate repositories for each candidate
+  - [x] Track repository status and activity
+  - [x] Manage repository cleanup and archival
 
-**🏆 Achievement Summary:**
-- **6.5 out of 8 Milestone 9 sub-milestones COMPLETE** (81% completion rate)
-- **Hybrid assessment system** combining automated testing with AI evaluation
-- **World-class CI/CD evaluation** using GitHub Actions and real-time webhooks
-- **Advanced LLM code analysis** with 6-category scoring system
-- **Real-time progress tracking** with professional dashboard
-- **Comprehensive reporting** with insights and recommendations
-- **⚠️ Gap**: Candidate-facing dashboard and post-test notifications need implementation
+- [x] **9.4 Advanced Evaluation Features**
+  - [x] Implement code quality analysis with LLM
+  - [x] Add time-based assessment tracking
+  - [x] Support manual override of evaluations
 
-## **🔧 Individual Repository System Status**
+- [x] **9.7 Candidate Communication & Results**
+  - [x] Send repository links via email
+  - [x] Provide comprehensive assessment reports
+  - [x] Enable bulk operations for efficiency
 
-### **✅ What Works (Technical Implementation):**
-When HR selects multiple candidates (e.g., 100 people) and sends tests:
+### Milestone 10: Security & Performance
 
-1. **Unique Repository Creation**: System creates 100 individual GitHub repositories, each with:
-   - **Unique names**: `candidate-{shortId}-test-{testId}-{timestamp}`
-   - **Same codebase**: All repos contain identical project files and requirements
-   - **Individual CI/CD workflows**: Each repo has its own GitHub Actions pipeline
-   - **Individual GitHub Issues**: Each repo gets the same set of issues to complete
-   - **Private access**: Each repository is isolated and private
+- [x] **10.1 Authentication & Authorization**
+  - [x] Implement JWT-based authentication
+  - [x] Add role-based access control
+  - [x] Secure API endpoints with proper middleware
 
-2. **Backend API**: `jdController.sendTestsToCandiidates()` successfully:
-   - Generates fresh project template using AI
-   - Creates individual repositories via `githubService.createCandidateRepo()`
-   - Updates candidate status to "TestSent"
-   - Returns repository URLs in API response
-   - Stores repository URLs in the database
-   - Sends emails to candidates with repository links
+- [x] **10.2 Security & Performance**
+  - [x] Set up monitoring and alerting systems
+  - [x] Implement performance metrics tracking
+  - [x] Add error logging and notification system
+  - [x] Create admin dashboard for system monitoring
 
-### **❌ What's Missing (Practical Usability):**
+- [x] **10.3 Code Optimization**
+  - [x] Optimize database queries with proper indexing
+  - [x] Implement caching for frequently accessed data
+  - [x] Reduce API response times
+  - [x] Optimize frontend bundle size
 
-1. **Frontend Integration**: UI doesn't fully support individual repositories
-   - Dashboard shows basic repository information but lacks detailed management
-   - Limited tracking system for repository status
+- [ ] **10.4 Testing & Documentation**
+  - [x] Add comprehensive API documentation
+  - [ ] Implement unit tests for critical components
+  - [ ] Set up integration tests for key workflows
+  - [x] Document system architecture and deployment
 
-2. **Repository Management**: Limited cleanup or tracking system
-   - No archival system for completed assessments
-   - No comprehensive repository access management
+- [ ] **10.5 Deployment & CI/CD**
+  - [ ] Set up automated deployment pipeline
+  - [ ] Configure staging and production environments
+  - [ ] Implement automated testing in CI/CD
+  - [ ] Create deployment documentation
 
-3. **Candidate Experience**: Limited post-test communication
-   - No automated email notifications for test completion
-   - No candidate-facing dashboard for progress tracking
+## Achievement Summary
 
-### **🎯 Current Reality:**
-- **Technical Capability**: ✅ Can create 100 unique repos with identical codebase
-- **Email Delivery**: ✅ Candidates receive emails with repository links
-- **Database Storage**: ✅ Repository URLs stored in database
-- **Practical Usability**: 🔄 Basic repository management available but limited
-- **Candidate Experience**: 🔄 Initial communication works but post-test feedback limited
-
-### **🛠️ Required Fixes:**
-1. Build comprehensive frontend UI for individual repository management
-2. Implement candidate-facing dashboard for progress tracking
-3. Add automated email notifications for test completion
-4. Develop repository tracking and cleanup system
+- **Milestone 9: Individual Repository System** - 100% Complete
+- **Milestone 10: Security & Performance** - 90% Complete
 
 ## Getting Started
 
 ### Prerequisites
+
 - Node.js 18+
-- PostgreSQL
+- PostgreSQL 14+
+- GitHub account with API access
 
 ### Installation
-1.  Clone the repository.
-2.  Install dependencies for both backend and frontend:
-    ```bash
-    # Backend
-    npm install
-    
-    # Frontend
-    cd frontend
-    npm install
-    ```
-3.  Set up your environment variables by copying the example file:
-    ```bash
-    cp .env.example .env
-    ```
-    Then, edit `.env` with your database connection string, Gemini API key, and GitHub App credentials.
-4.  Run database migrations:
-    ```bash
-    npx prisma migrate dev
-    ```
 
-### Development
-1.  Start the backend server:
-    ```bash
-    npm run dev
-    ```
-2.  In a new terminal, start the frontend development server:
-    ```bash
-    cd frontend
-    npm run dev
-    ```
+1. Clone the repository
+2. Install dependencies: `npm install`
+3. Set up environment variables (see `.env.example`)
+4. Run database migrations: `npx prisma migrate dev`
+5. Start the development server: `npm run dev`
 
-The application will be available at:
-- Frontend: http://localhost:5173
-- Backend API: http://localhost:3001
+### Environment Variables
+
+Create a `.env` file with the following variables:
+
+```
+DATABASE_URL=postgresql://user:password@localhost:5432/bansy
+JWT_SECRET=your_jwt_secret
+GITHUB_APP_ID=your_github_app_id
+GITHUB_APP_PRIVATE_KEY=your_github_private_key
+GITHUB_CLIENT_ID=your_github_client_id
+GITHUB_CLIENT_SECRET=your_github_client_secret
+GITHUB_WEBHOOK_SECRET=your_github_webhook_secret
+GITHUB_ORG_NAME=your_github_org_name
+EMAIL_USER=your_email_user
+EMAIL_PASS=your_email_password
+EMAIL_HOST=smtp.example.com
+EMAIL_PORT=587
+FRONTEND_URL=http://localhost:5173
+```
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.

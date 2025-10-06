@@ -17,6 +17,7 @@ interface CandidateEmailData {
   repositoryUrl: string;
   companyName?: string;
   testUrl?: string;
+  githubUsername?: string;
 }
 
 class EmailService {
@@ -223,6 +224,9 @@ class EmailService {
             <div class="instructions">
               <h3>📝 How to Get Started:</h3>
               <ol>
+                ${candidateData.githubUsername ?
+                  `<li>We’ve invited your GitHub user <strong>${candidateData.githubUsername}</strong>; click the repository link above to accept the invitation and access your assessment.</li>`
+                  : `<li>Reply with your GitHub username so we can grant push access</li>`}
                 <li>Click the repository link above to access your private assessment repo</li>
                 <li>Clone the repository to your local development environment</li>
                 <li>Read the README.md file for complete project requirements</li>

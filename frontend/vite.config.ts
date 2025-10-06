@@ -13,7 +13,25 @@ export default defineConfig({
       },
     },
   },
-  // Performance optimizations
+  build: {
+    target: 'esnext',
+    minify: 'esbuild',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          router: ['react-router-dom'],
+          mantine: ['@mantine/core', '@mantine/hooks', '@mantine/form'],
+          icons: ['@tabler/icons-react'],
+        },
+      },
+    },
+    // Enable source maps for better debugging
+    sourcemap: false, // Disable for production
+    // Optimize chunk size
+    chunkSizeWarningLimit: 1000,
+  },
+  // Optimize dependencies
   optimizeDeps: {
     include: [
       'react',
@@ -25,18 +43,5 @@ export default defineConfig({
       'axios'
     ],
     exclude: ['@tabler/icons-react']
-  },
-  build: {
-    target: 'esnext',
-    minify: 'esbuild',
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom'],
-          router: ['react-router-dom'],
-          mantine: ['@mantine/core', '@mantine/hooks', '@mantine/form'],
-        },
-      },
-    },
   },
 })

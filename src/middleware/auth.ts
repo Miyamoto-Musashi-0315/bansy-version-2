@@ -1,61 +1,88 @@
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
-import { prisma } from '../db';
-import { JWT_SECRET } from '../config';
+import { verify } from 'jsonwebtoken';
+import { config } from '../config';
+import { prisma } from '../prismaClient';
 
-// Extend Express Request type to include user
-declare global {
-  namespace Express {
-    interface Request {
-      user?: {
-        id: string;
-        email: string;
-        role: string;
-      };
-    }
-  }
+export interface UserRequest extends Request {
+  user?: {
+    id: string;
+    email?: string;
+    username?: string;
+    role: string;
+  };
 }
 
-/**
- * Middleware to authenticate users via JWT
- */
-export const authenticateUser = async (req: Request, res: Response, next: NextFunction) => {
-  console.log('--- Authenticating user ---');
+export const authenticateUser = async (req: UserRequest, res: Response, next: NextFunction) => {
   try {
     const authHeader = req.headers.authorization;
-    console.log('Auth Header:', authHeader);
-
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      console.error('No token provided or invalid format');
-      return res.status(401).json({ error: 'Unauthorized - No token provided' });
+    
+    if (!authHeader) {
+      return res.status(401).json({ error: 'No token provided' });
     }
-
+    
     const token = authHeader.split(' ')[1];
-    console.log('Token received:', token);
-    console.log('Verifying token with secret:', JWT_SECRET ? 'Exists' : 'MISSING!');
-
-    // Verify token and attach user to request
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
-    console.log('Decoded token:', decoded);
-
+    
+    if (!token) {
+      return res.status(401).json({ error: 'Invalid token format' });
+    }
+    
+    const decoded = verify(token, config.jwtSecret) as any;
+    
+    // Handle both regular users and developer users
+    if (decoded.role === 'DEVELOPER') {
+      // For developer users, we don't need to check the database
+      req.user = {
+        id: decoded.userId,
+        username: decoded.username,
+        role: decoded.role
+      };
+      return next();
+    }
+    
+    // For regular users, verify they exist in the database
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
       select: { id: true, email: true, role: true },
     });
-    console.log('User found:', !!user);
-
+    
     if (!user) {
-      console.error('Invalid user from token');
-      return res.status(401).json({ error: 'Unauthorized - Invalid user' });
+      return res.status(401).json({ error: 'User not found' });
     }
-
-    req.user = user;
-    console.log('--- Authentication successful ---');
+    
+    req.user = {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+    };
+    
     next();
   } catch (error) {
-    console.error('--- Authentication failed ---');
-    console.error('JWT verification error:', error);
-    // Catches errors from jwt.verify (e.g., expired, invalid signature)
-    return res.status(401).json({ error: 'Unauthorized - Invalid token' });
+    return res.status(401).json({ error: 'Invalid or expired token' });
   }
+};
+
+export const requireRole = (role: string) => {
+  return (req: UserRequest, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+    
+    if (req.user.role !== role) {
+      return res.status(403).json({ error: `Access denied. ${role} role required.` });
+    }
+    
+    next();
+  };
+};
+
+export const requireDeveloper = (req: UserRequest, res: Response, next: NextFunction) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+  
+  if (req.user.role !== 'DEVELOPER') {
+    return res.status(403).json({ error: 'Access denied. Developer role required.' });
+  }
+  
+  next();
 };

@@ -36,7 +36,7 @@ export function Register() {
   return (
     <Container size={420} my={40}>
       <Box ta="center">
-        <Title>Create your account</Title>
+        <Title>Create your Bansy account</Title>
         <Text c="dimmed" size="sm" mt={5}>
           Already have an account?{' '}
           <Link to="/login" style={{ color: 'var(--mantine-color-blue-6)' }}>

@@ -44,4 +44,7 @@ router.get('/:id/repositories', jdController.getCandidateRepositories);
 router.post('/:id/repositories/archive', jdController.archiveRepositories);
 router.get('/candidate/:candidateId/repository-status', jdController.getCandidateRepositoryStatus);
 
+// Candidate GitHub username & collaborator invite
+router.post('/candidate/:candidateId/github-username', jdController.setCandidateGithubUsername);
+
 export default router;
