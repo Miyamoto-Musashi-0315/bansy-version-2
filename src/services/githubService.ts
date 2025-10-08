@@ -577,13 +577,32 @@ class GithubService {
       return;
     }
 
-    try {
-      console.log(`Creating ${issues.length} GitHub issues for repository ${repoName}`);
-      
-      for (let index = 0; index < issues.length; index++) {
-        const issue = issues[index];
-        // Create the issue body with enhanced formatting
-        const issueBody = `
+    // Ensure all issue labels exist in the repository
+    const allLabels = new Set<string>();
+    issues.forEach(issue => {
+      issue.labels.forEach(label => allLabels.add(label));
+      allLabels.add(issue.difficulty);
+      allLabels.add('assessment');
+    });
+    for (const label of allLabels) {
+      try {
+        // Check if label exists
+        await this.octokit!.issues.getLabel({ owner: this.config.organizationName, repo: repoName, name: label });
+      } catch (error: any) {
+        if (error.status === 404) {
+          // Create missing label with a default color
+          await this.octokit!.issues.createLabel({ owner: this.config.organizationName, repo: repoName, name: label, color: 'ededed' });
+          console.log(`Created label ${label} in ${repoName}`);
+        }
+      }
+    }
+
+    console.log(`Creating ${issues.length} GitHub issues for repository ${repoName}`);
+
+    for (let index = 0; index < issues.length; index++) {
+      const issue = issues[index];
+      // Create the issue body with enhanced formatting
+      const issueBody = `
 ${issue.description}
 
 ## Acceptance Criteria
@@ -606,35 +625,31 @@ This issue is validated by test case(s): ${issue.testCaseIds.map(id => `#${id + 
 
 ---
 *This is an automated assessment issue. Your implementation will be evaluated automatically.*
-        `.trim();
+      `.trim();
 
-        try {
-          // Create the issue
-          const { data: createdIssue } = await this.octokit!.issues.create({
-            owner: this.config.organizationName,
-            repo: repoName,
-            title: `[${issue.difficulty.toUpperCase()}] ${issue.title}`,
-            body: issueBody,
-            labels: [...issue.labels, issue.difficulty, 'assessment']
-          });
+      try {
+        // Create the issue
+        const { data: createdIssue } = await this.octokit!.issues.create({
+          owner: this.config.organizationName,
+          repo: repoName,
+          title: `[${issue.difficulty.toUpperCase()}] ${issue.title}`,
+          body: issueBody,
+          labels: [...issue.labels, issue.difficulty, 'assessment']
+        });
 
-          console.log(`Created issue #${createdIssue.number}: ${issue.title}`);
-        } catch (issueError: any) {
-          console.warn(`⚠️ Warning: Could not create issue "${issue.title}":`, issueError.message);
-          
-          if (issueError.status === 403 || issueError.status === 422) {
-            console.warn('This might be due to missing GitHub App permissions for issues.');
-            console.warn('You can add issues manually or update the GitHub App permissions.');
-          }
-          // Continue with other issues
+        console.log(`Created issue #${createdIssue.number}: ${issue.title}`);
+      } catch (issueError: any) {
+        console.warn(`⚠️ Warning: Could not create issue "${issue.title}":`, issueError.message);
+        
+        if (issueError.status === 403 || issueError.status === 422) {
+          console.warn('This might be due to missing GitHub App permissions for issues.');
+          console.warn('You can add issues manually or update the GitHub App permissions.');
         }
+        // Continue with other issues
       }
-
-      console.log(`GitHub issues creation process completed`);
-    } catch (error: any) {
-      console.error('Error in GitHub issues creation process:', error.message);
-      // Don't throw - this is not critical for repository functionality
     }
+
+    console.log(`GitHub issues creation process completed`);
   }
 
   /**
